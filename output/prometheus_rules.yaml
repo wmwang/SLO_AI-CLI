@@ -1,0 +1,28 @@
+groups:
+  - name: slo-rules
+    rules:
+      - record: api_availability
+        expr: (sum(rate(http_requests_total{job="guestbook-ui", status="200"}[30d])) / sum(rate(http_requests_total{job="guestbook-ui"}[30d]))) * 100
+        labels:
+          slo: "API Availability"
+      - alert: ApiAvailabilityAlert
+        expr: (sum(rate(http_requests_total{job="guestbook-ui", status="200"}[30d])) / sum(rate(http_requests_total{job="guestbook-ui"}[30d])) < 99.9)
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "API Availability below target"
+          description: "API Availability is below 99.9% over the last 30 days."
+
+      - record: api_latency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="guestbook-ui"}[30d])) by (le))
+        labels:
+          slo: "API Latency"
+      - alert: ApiLatencyAlert
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="guestbook-ui"}[30d])) by (le)) > 0.2
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "API Latency above target"
+          description: "API Latency is above 200ms (0.2s) over the last 30 days.",

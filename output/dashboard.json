@@ -1,0 +1,48 @@
+{
+  "panels": [
+    {
+      "type": "graph",
+      "title": "API Availability",
+      "targets": [
+        {
+          "expr": "api_availability",
+          "format": "time_series"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "percent",
+          "label": "Availability",
+          "min": 0,
+          "max": 100
+        }
+      ],
+      "legend": {
+        "show": true
+      }
+    },
+    {
+      "type": "graph",
+      "title": "API Latency (95th Percentile)",
+      "targets": [
+        {
+          "expr": "api_latency",
+          "format": "time_series"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "ms",
+          "label": "Latency (ms)",
+          "min": 0
+        }
+      ],
+      "legend": {
+        "show": true
+      }
+    }
+  ],
+  "title": "SLO Dashboard",
+  "schemaVersion": 26,
+  "version": 1
+}
