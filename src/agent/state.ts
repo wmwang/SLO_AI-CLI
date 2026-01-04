@@ -4,7 +4,8 @@ export interface SLO {
     id: string;
     name: string;
     description: string;
-    target: number; // e.g., 99.9
+    target: number; // e.g., 99.9 (Availability %)
+    threshold?: string | null; // Optional: e.g., "200ms", null if not applicable
     window: string; // e.g., "30d"
     golden_signal?: string; // e.g., "Latency", "Errors"
     description_zh?: string; // Traditional Chinese description for beginners
@@ -24,6 +25,7 @@ export const AgentState = Annotation.Root({
     // Output Artifacts
     generatedRules: Annotation<string>(), // Prometheus Rule YAML
     generatedDashboard: Annotation<string>(), // Grafana Dashboard JSON
+    generatedSlothSpec: Annotation<string>(), // Sloth YAML Spec
 
     // Feedback / Optimization Loop
     prometheusUrl: Annotation<string>(), // Input: URL for Prometheus

@@ -20,7 +20,7 @@ const SLOSelection: React.FC = () => {
     // Default select all
     const [selectedIds, setSelectedIds] = useState<string[]>(recommendedSLOs.map(s => s.id));
     const [isGenerating, setIsGenerating] = useState(false);
-    const [artifacts, setArtifacts] = useState<{ rules: string, dashboard: string } | null>(null);
+    const [artifacts, setArtifacts] = useState<{ rules: string, dashboard: string, sloth?: string } | null>(null);
 
     const toggleSLO = (id: string) => {
         if (selectedIds.includes(id)) {
@@ -37,7 +37,8 @@ const SLOSelection: React.FC = () => {
             const result = await generateArtifacts(selected);
             setArtifacts({
                 rules: result.generatedRules,
-                dashboard: result.generatedDashboard
+                dashboard: result.generatedDashboard,
+                sloth: result.generatedSlothSpec
             });
         } catch (err) {
             console.error(err);
@@ -46,6 +47,7 @@ const SLOSelection: React.FC = () => {
             setIsGenerating(false);
         }
     };
+    // ... (skip lines)
 
     const downloadFile = (filename: string, content: string) => {
         const element = document.createElement("a");
@@ -80,6 +82,12 @@ const SLOSelection: React.FC = () => {
                         <h4>Grafana Dashboard</h4>
                         <button className="btn btn-primary" onClick={() => downloadFile('dashboard.json', artifacts.dashboard)}>Download JSON</button>
                     </div>
+                    {artifacts.sloth && (
+                        <div className="card" style={{ flex: 1 }}>
+                            <h4>Sloth Spec</h4>
+                            <button className="btn btn-primary" onClick={() => downloadFile('sloth.yaml', artifacts.sloth!)}>Download YAML</button>
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>

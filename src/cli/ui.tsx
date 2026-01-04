@@ -111,6 +111,9 @@ const App = () => {
             await fs.ensureDir('./output');
             await fs.writeFile('./output/prometheus_rules.yaml', result.generatedRules || "");
             await fs.writeFile('./output/dashboard.json', result.generatedDashboard || "");
+            if (result.generatedSlothSpec) {
+                await fs.writeFile('./output/sloth.yaml', result.generatedSlothSpec);
+            }
 
             // Save State (Memory)
             await stateManager.saveState(selected, {

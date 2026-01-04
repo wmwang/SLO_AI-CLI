@@ -1,25 +1,15 @@
 groups:
-  - name: slo-rules
+  - name: guestbook-ui-saturation
     rules:
-      - record: avg_cpu_utilization
-        expr: avg(rate(container_cpu_usage_seconds_total{job="kubelet", image!="", container!="POD"}[5m])) by (pod)
+      - record: guestbook_ui_saturation
+        expr: sum(rate(container_memory_usage_bytes{job="guestbook-ui"}[30d])) / sum(container_memory_limit_bytes{job="guestbook-ui"}) * 100
         labels:
           service: guestbook-ui
-
-      - alert: HighCpuUtilization
-        expr: avg(rate(container_cpu_usage_seconds_total{job="kubelet", image!="", container!="POD"}[5m])) by (pod) > 0.7
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High CPU Utilization detected for guestbook UI"
-          description: "The average CPU utilization is above 70% for the last 5 minutes."
-
-      - alert: CriticalCpuUtilization
-        expr: avg(rate(container_cpu_usage_seconds_total{job="kubelet", image!="", container!="POD"}[5m])) by (pod) > 0.9
+      - alert: GuestbookUISaturationHigh
+        expr: guestbook_ui_saturation > 80
         for: 5m
         labels:
           severity: critical
         annotations:
-          summary: "Critical CPU Utilization detected for guestbook UI"
-          description: "The average CPU utilization is above 90% for the last 5 minutes.",
+          summary: "Guestbook UI Saturation High"
+          description: "The saturation of the Guestbook UI service is above 80% for more than 5 minutes.",

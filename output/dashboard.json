@@ -1,56 +1,27 @@
 {
-  "annotations": {
-    "list": []
-  },
   "panels": [
     {
-      "datasource": "Prometheus",
       "type": "graph",
-      "title": "Average CPU Utilization",
+      "title": "Guestbook UI Saturation",
       "targets": [
         {
-          "expr": "avg(rate(container_cpu_usage_seconds_total{job=\"kubelet\", image! = \"\", container! = \"POD\"}[5m])) by (pod)",
-          "format": "time_series",
-          "intervalFactor": 2,
-          "legendFormat": "{{pod}}",
-          "refId": "A"
+          "expr": "guestbook_ui_saturation",
+          "format": "time_series"
         }
       ],
-      "lines": true,
-      "fill": 1,
-      "xaxis": {
-        "mode": "time"
-      },
       "yaxes": [
         {
           "format": "percent",
-          "label": "CPU Utilization",
           "min": 0,
-          "max": 1
+          "max": 100
         },
         {
-          "format": "short"
+          "show": false
         }
       ],
-      "thresholds": [
-        {
-          "value": 0.7,
-          "colorMode": "critical",
-          "op": ">=",
-          "fill": true,
-          "line": true
-        },
-        {
-          "value": 0.9,
-          "colorMode": "warning",
-          "op": ">=",
-          "fill": true,
-          "line": true
-        }
-      ]
+      "lines": true,
+      "fill": 1
     }
   ],
-  "schemaVersion": 26,
-  "version": 1,
-  "refresh": "5s"
+  "title": "Guestbook UI SLO Dashboard"
 }

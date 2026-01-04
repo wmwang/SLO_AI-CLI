@@ -17,7 +17,8 @@ const SLOSchema = z.object({
     id: z.string(),
     name: z.string(),
     description: z.string(),
-    target: z.number(),
+    target: z.number().describe("Availability Target % (e.g., 99.9). MUST be between 0 and 100."),
+    threshold: z.string().nullable().describe("Optional threshold (e.g., '200ms'). Return null if not applicable (e.g. for simple errors)."),
     window: z.string(),
     golden_signal: z.string().describe("One of: Latency, Traffic, Errors, Saturation"),
     description_zh: z.string().describe("A beginner-friendly explanation in Traditional Chinese"),
@@ -55,27 +56,40 @@ export const recommendSLOsNode = async (state: typeof AgentState.State) => {
 const ArtifactsOutput = z.object({
     prometheus_yaml: z.string(),
     grafana_json: z.string(),
+    sloth_yaml: z.string(),
 });
 
 // Node: Generate Artifacts
 export const generateArtifactsNode = async (state: typeof AgentState.State) => {
-    logger.log("Generating Prometheus Rules and Grafana Dashboard...", "ai", { selectedSLOs: state.selectedSLOs });
+    logger.log("Generating Prometheus Rules, Grafana Dashboard, and Sloth Spec...", "ai", { selectedSLOs: state.selectedSLOs });
     const chain = ARTIFACT_GENERATOR_PROMPT.pipe(model.withStructuredOutput(ArtifactsOutput));
 
+    // Pre-process SLOs to ensure valid Sloth IDs
+    const slosWithStrictIds = state.selectedSLOs.map(slo => ({
+        ...slo,
+        // Create a 'sloth_id' that is strictly lowercase alphanumeric + dashes
+        sloth_id: slo.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    }));
+
     const formattedPrompt = await ARTIFACT_GENERATOR_PROMPT.format({
-        selected_slos: JSON.stringify(state.selectedSLOs, null, 2),
+        selected_slos: JSON.stringify(slosWithStrictIds, null, 2),
     });
     logger.log(`Generated Prompt for Artifact Generation`, "info", { fullPrompt: formattedPrompt });
 
     const result = await chain.invoke({
-        selected_slos: JSON.stringify(state.selectedSLOs, null, 2),
+        selected_slos: JSON.stringify(slosWithStrictIds, null, 2),
     });
 
-    logger.log("Artifacts generated successfully.", "ai", { generatedRules: result.prometheus_yaml, generatedDashboard: result.grafana_json });
+    logger.log("Artifacts generated successfully.", "ai", {
+        generatedRules: result.prometheus_yaml,
+        generatedDashboard: result.grafana_json,
+        generatedSlothSpec: result.sloth_yaml
+    });
 
     return {
         generatedRules: result.prometheus_yaml,
         generatedDashboard: result.grafana_json,
+        generatedSlothSpec: result.sloth_yaml,
     };
 };
 

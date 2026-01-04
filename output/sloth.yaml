@@ -1,0 +1,19 @@
+version: "prometheus/v1"
+service: "my-service"
+slos:
+  - name: "guestbook-ui-saturation"
+    objective: 99.9
+    sli:
+      events:
+        error_query: 'sum(rate(container_memory_usage_bytes{job="guestbook-ui", status=~"5.."}[{{ .window }}]))'
+        total_query: 'sum(rate(container_memory_usage_bytes{job="guestbook-ui"}[{{ .window }}]))'
+    alerting:
+      name: GuestbookUISaturationHigh
+      labels:
+        category: "availability"
+      page_alert:
+        labels:
+          severity: critical
+      ticket_alert:
+        labels:
+          severity: warning

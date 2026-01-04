@@ -21,6 +21,7 @@ router.post('/analyze-manifest', async (req, res) => {
             selectedSLOs: [],
             generatedRules: "",
             generatedDashboard: "",
+            generatedSlothSpec: "",
             metricsData: "",
             prometheusUrl: "",
             optimizationReport: ""
@@ -49,6 +50,7 @@ router.post('/generate-artifacts', async (req, res) => {
             recommendedSLOs: [],
             generatedRules: "",
             generatedDashboard: "",
+            generatedSlothSpec: "",
             metricsData: "",
             prometheusUrl: "",
             optimizationReport: ""
@@ -105,6 +107,7 @@ router.post('/optimize', async (req, res) => {
             selectedSLOs: loadedSLOs,
             generatedRules: "",
             generatedDashboard: "",
+            generatedSlothSpec: "",
             prometheusUrl: "",
             optimizationReport: ""
         };
