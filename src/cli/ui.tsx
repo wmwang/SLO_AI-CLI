@@ -11,6 +11,7 @@ import { SLO } from '../agent/state.js';
 import { recommendationGraph, generationGraph, optimizationGraph } from '../agent/graph.js';
 import fs from 'fs-extra';
 import path from 'path';
+import { stateManager } from '../agent/state_manager.js';
 
 export type ViewState =
     | 'WELCOME'
@@ -38,14 +39,30 @@ const App = () => {
     const [generatedRules, setGeneratedRules] = useState<string>("");
     const [generatedDashboard, setGeneratedDashboard] = useState<string>("");
     const [optimizationReport, setOptimizationReport] = useState<string>("");
+    const [hasLoadedMemory, setHasLoadedMemory] = useState<boolean>(false);
 
     const handleModeSelect = (selectedMode: 'NEW' | 'OPTIMIZE') => {
         setMode(selectedMode);
         if (selectedMode === 'NEW') {
             setView('INPUT_PATH');
         } else {
-            setView('INPUT_METRICS');
+            // Check for memory
+            checkMemoryAndSwitch();
         }
+    };
+
+    const checkMemoryAndSwitch = async () => {
+        const hasMemory = await stateManager.exists();
+        if (hasMemory) {
+            const memory = await stateManager.loadState();
+            if (memory && memory.slos.length > 0) {
+                // Pre-load SLOs from memory for context
+                setSelectedSLOs(memory.slos);
+                setHasLoadedMemory(true);
+                // We could show a message here, but for now just proceed to Input
+            }
+        }
+        setView('INPUT_METRICS');
     };
 
     const handlePathSubmit = async (inputPath: string) => {
@@ -95,6 +112,12 @@ const App = () => {
             await fs.writeFile('./output/prometheus_rules.yaml', result.generatedRules || "");
             await fs.writeFile('./output/dashboard.json', result.generatedDashboard || "");
 
+            // Save State (Memory)
+            await stateManager.saveState(selected, {
+                rules: './output/prometheus_rules.yaml',
+                dashboard: './output/dashboard.json'
+            });
+
             setView('SHOW_RESULT');
         } catch (err: any) {
             setError(err.message);
@@ -107,7 +130,15 @@ const App = () => {
         setView('OPTIMIZING');
 
         try {
-            const result = await optimizationGraph.invoke({ metricsData: data });
+            // Combine user metrics input with persisted Memory (SLO context)
+            let context = `User Input Metrics:\n${data}\n\n`;
+
+            // If we have selectedSLOs in state (loaded from memory), append them to context for LLM
+            if (selectedSLOs.length > 0) {
+                context += `[System Memory] Configured SLOs (from previous run):\n${JSON.stringify(selectedSLOs, null, 2)}\n`;
+            }
+
+            const result = await optimizationGraph.invoke({ metricsData: context });
             setOptimizationReport(result.optimizationReport || "No report generated.");
             setView('SHOW_RESULT');
         } catch (err: any) {
@@ -118,13 +149,15 @@ const App = () => {
 
     return (
         <Box flexDirection="column" padding={1}>
-            <Box marginBottom={1}>
-                <Text bold color="cyan">Kubernetes SLO Agent</Text>
-            </Box>
+            {view !== 'WELCOME' && (
+                <Box marginBottom={1}>
+                    <Text bold color="cyan">Kubernetes SLO Agent</Text>
+                </Box>
+            )}
 
             {view === 'WELCOME' && <Welcome onSelect={handleModeSelect} />}
             {view === 'INPUT_PATH' && <PathInput onSubmit={handlePathSubmit} />}
-            {view === 'INPUT_METRICS' && <MetricInput onSubmit={handleMetricSubmit} />}
+            {view === 'INPUT_METRICS' && <MetricInput onSubmit={handleMetricSubmit} hasMemory={hasLoadedMemory} />}
 
             {view === 'ANALYZING' && <Status message="Analyzing K8s Manifests with AI..." spinner="dots" />}
             {view === 'SELECTING_SLOS' && <SLOSelector items={recommendedSLOs} onSubmit={handleSLOSelection} />}
@@ -138,6 +171,7 @@ const App = () => {
                     rulesPath="./output/prometheus_rules.yaml"
                     dashboardPath="./output/dashboard.json"
                     report={optimizationReport}
+                    selectedSLOs={selectedSLOs}
                 />
             )}
 

@@ -35,6 +35,10 @@ class AgentLogger extends EventEmitter {
             console.error("Failed to write to log file:", err);
         }
     }
+
+    stream(token: string) {
+        this.emit('stream', token);
+    }
 }
 
 export const logger = new AgentLogger();

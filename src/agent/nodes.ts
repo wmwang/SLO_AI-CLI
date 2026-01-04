@@ -34,6 +34,12 @@ export const recommendSLOsNode = async (state: typeof AgentState.State) => {
 
     const chain = SLO_RECOMMENDER_PROMPT.pipe(model.withStructuredOutput(RecommendationOutput));
 
+    // Log the full prompt
+    const formattedPrompt = await SLO_RECOMMENDER_PROMPT.format({
+        k8s_manifests: state.k8sManifests
+    });
+    logger.log(`Generated Prompt for Recommender`, "info", { fullPrompt: formattedPrompt });
+
     const result = await chain.invoke({
         k8s_manifests: state.k8sManifests,
     });
@@ -56,6 +62,11 @@ export const generateArtifactsNode = async (state: typeof AgentState.State) => {
     logger.log("Generating Prometheus Rules and Grafana Dashboard...", "ai", { selectedSLOs: state.selectedSLOs });
     const chain = ARTIFACT_GENERATOR_PROMPT.pipe(model.withStructuredOutput(ArtifactsOutput));
 
+    const formattedPrompt = await ARTIFACT_GENERATOR_PROMPT.format({
+        selected_slos: JSON.stringify(state.selectedSLOs, null, 2),
+    });
+    logger.log(`Generated Prompt for Artifact Generation`, "info", { fullPrompt: formattedPrompt });
+
     const result = await chain.invoke({
         selected_slos: JSON.stringify(state.selectedSLOs, null, 2),
     });
@@ -73,13 +84,27 @@ export const optimizeSLOsNode = async (state: typeof AgentState.State) => {
     logger.log("Analyzing metrics and optimizing SLOs...", "ai", { metricsData: state.metricsData });
     const chain = SLO_OPTIMIZER_PROMPT.pipe(model);
 
-    const result = await chain.invoke({
+    let fullContent = "";
+
+    // Log the full prompt
+    const formattedPrompt = await SLO_OPTIMIZER_PROMPT.format({
+        metrics_data: state.metricsData || "No specific metrics provided, please perform general audit based on best practices.",
+    });
+    logger.log(`Generated Prompt for Optimization`, "info", { fullPrompt: formattedPrompt });
+
+    const stream = await chain.stream({
         metrics_data: state.metricsData || "No specific metrics provided, please perform general audit based on best practices.",
     });
 
-    logger.log("Optimization analysis completed.", "ai", { optimizationReport: result.content });
+    for await (const chunk of stream) {
+        const token = chunk.content as string;
+        fullContent += token;
+        logger.stream(token);
+    }
+
+    logger.log("Optimization analysis completed.", "ai", { optimizationReport: fullContent });
 
     return {
-        optimizationReport: result.content as string,
+        optimizationReport: fullContent,
     };
 };

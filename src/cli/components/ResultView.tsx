@@ -1,14 +1,25 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import { SLO } from '../../agent/state.js';
 
 interface ResultViewProps {
     mode: 'NEW' | 'OPTIMIZE';
     rulesPath: string;
     dashboardPath: string;
     report: string;
+    selectedSLOs?: SLO[];
 }
 
-const ResultView: React.FC<ResultViewProps> = ({ mode, rulesPath, dashboardPath, report }) => {
+const getGraphMock = (type?: string) => {
+    switch (type?.toLowerCase()) {
+        case 'latency': return "  |   /\\   \n  |__/  \\__";
+        case 'errors': return "  |       _\n  |___|___|";
+        case 'traffic': return "  |  /  /  \n  | /  /   ";
+        default: return "  | ~~~~~~ \n  |________";
+    }
+};
+
+const ResultView: React.FC<ResultViewProps> = ({ mode, rulesPath, dashboardPath, report, selectedSLOs }) => {
     if (mode === 'NEW') {
         return (
             <Box flexDirection="column" borderStyle="double" borderColor="green" padding={1}>
@@ -52,7 +63,27 @@ const ResultView: React.FC<ResultViewProps> = ({ mode, rulesPath, dashboardPath,
                     <Box marginLeft={2}>
                         <Text>   Wait for a few minutes, then check if data appearing in the dashboard.</Text>
                     </Box>
+                    <Box marginLeft={2}>
+                        <Text>   Wait for a few minutes, then check if data appearing in the dashboard.</Text>
+                    </Box>
                 </Box>
+
+                {selectedSLOs && selectedSLOs.length > 0 && (
+                    <Box marginTop={1} flexDirection="column" borderStyle="single" borderColor="gray">
+                        <Box marginTop={-1} marginLeft={1}>
+                            <Text bold backgroundColor="blue" color="white"> Dashboard Preview </Text>
+                        </Box>
+                        <Box flexDirection="row" flexWrap="wrap" padding={1}>
+                            {selectedSLOs.map(slo => (
+                                <Box key={slo.id} borderStyle="single" borderColor="gray" margin={1} width={30} height={6} flexDirection="column">
+                                    <Text bold>{slo.name}</Text>
+                                    <Text color="green" >{getGraphMock(slo.golden_signal)}</Text>
+                                    <Text color="gray">Target: {slo.target}%</Text>
+                                </Box>
+                            ))}
+                        </Box>
+                    </Box>
+                )}
             </Box>
         );
     } else {

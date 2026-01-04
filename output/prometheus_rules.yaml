@@ -1,28 +1,44 @@
 groups:
-  - name: slo-rules
+  - name: SLOs
     rules:
       - record: api_availability
         expr: (sum(rate(http_requests_total{job="guestbook-ui", status="200"}[30d])) / sum(rate(http_requests_total{job="guestbook-ui"}[30d]))) * 100
         labels:
           slo: "API Availability"
+
       - alert: ApiAvailabilityAlert
-        expr: (sum(rate(http_requests_total{job="guestbook-ui", status="200"}[30d])) / sum(rate(http_requests_total{job="guestbook-ui"}[30d])) < 99.9)
-        for: 1h
+        expr: api_availability < 99.9
+        for: 30d
         labels:
           severity: critical
         annotations:
-          summary: "API Availability below target"
-          description: "API Availability is below 99.9% over the last 30 days."
+          summary: "API Availability is below target"
+          description: "API Availability is at {{ $value }}%, which is below the target of 99.9% over the last 30 days."
 
       - record: api_latency
         expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="guestbook-ui"}[30d])) by (le))
         labels:
           slo: "API Latency"
+
       - alert: ApiLatencyAlert
-        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="guestbook-ui"}[30d])) by (le)) > 0.2
-        for: 1h
+        expr: api_latency > 0.2
+        for: 30d
         labels:
-          severity: critical
+          severity: warning
         annotations:
-          summary: "API Latency above target"
-          description: "API Latency is above 200ms (0.2s) over the last 30 days.",
+          summary: "API Latency is above target"
+          description: "API Latency is at {{ $value }}s, which is above the target of 200ms over the last 30 days."
+
+      - record: service_traffic
+        expr: sum(rate(http_requests_total{job="guestbook-ui"}[30d]))
+        labels:
+          slo: "Service Traffic"
+
+      - alert: ServiceTrafficAlert
+        expr: service_traffic < 10000
+        for: 30d
+        labels:
+          severity: info
+        annotations:
+          summary: "Service Traffic is below target"
+          description: "Service Traffic is at {{ $value }} requests, which is below the target of 10000 requests over the last 30 days.",

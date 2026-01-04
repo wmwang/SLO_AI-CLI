@@ -1,0 +1,17 @@
+[Context]
+Service: guestbook-ui
+Target SLO: 99.9% Availability (rolling 30d window)
+Metric: http_requests_total{status=~"5.."} / http_requests_total
+
+[Current Status - Prometheus Query Results]
+- sum(rate(http_requests_total[30d])) = 5.2 req/sec
+- sum(rate(http_requests_total{status=~"5.."}[30d])) = 0.05 req/sec
+- Current Availability (30d): 99.04% (Target: 99.9%) -> VIOLATED
+
+[Burn Rate Analysis]
+- 1h Burn Rate: 14.4 (Critical) - Represents 14.4x the allowed error rate consumption speed.
+- Error Budget Remaining: -20% (Depleted 3 days ago)
+
+[Recent Incidents]
+- Large spike in 503 errors observed between 10:00 - 11:00 UTC yesterday during database migration.
+- Intermittent 504 Gateway Timeouts observed during peak hours (14:00 UTC).

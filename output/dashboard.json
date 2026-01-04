@@ -6,7 +6,8 @@
       "targets": [
         {
           "expr": "api_availability",
-          "format": "time_series"
+          "legendFormat": "API Availability",
+          "refId": "A"
         }
       ],
       "yaxes": [
@@ -16,30 +17,44 @@
           "min": 0,
           "max": 100
         }
-      ],
-      "legend": {
-        "show": true
-      }
+      ]
     },
     {
       "type": "graph",
-      "title": "API Latency (95th Percentile)",
+      "title": "API Latency",
       "targets": [
         {
           "expr": "api_latency",
-          "format": "time_series"
+          "legendFormat": "API Latency (95th Percentile)",
+          "refId": "B"
         }
       ],
       "yaxes": [
         {
-          "format": "ms",
-          "label": "Latency (ms)",
-          "min": 0
+          "format": "seconds",
+          "label": "Latency",
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Service Traffic",
+      "targets": [
+        {
+          "expr": "service_traffic",
+          "legendFormat": "Service Traffic",
+          "refId": "C"
         }
       ],
-      "legend": {
-        "show": true
-      }
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "Requests",
+          "min": 0
+        }
+      ]
     }
   ],
   "title": "SLO Dashboard",
