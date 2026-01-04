@@ -1,32 +1,14 @@
 {
-  "lastUpdated": "2026-01-03T23:53:19.532Z",
+  "lastUpdated": "2026-01-04T04:35:49.051Z",
   "slos": [
     {
-      "id": "slo-001",
-      "name": "API Availability",
-      "description": "Measures the percentage of successful responses from the guestbook UI API over a specified time period.",
-      "target": 99.9,
+      "id": "slo-008",
+      "name": "CPU Utilization",
+      "description": "Measures the average CPU usage of the guestbook UI deployment, indicating how efficiently the service is using resources.",
+      "target": 70,
       "window": "30d",
-      "golden_signal": "Errors",
-      "description_zh": "這個指標衡量在特定時間內，guestbook UI API 的成功響應百分比。這對用戶來說非常重要，因為它確保了應用程序的可用性，讓用戶能夠順利使用服務。"
-    },
-    {
-      "id": "slo-002",
-      "name": "API Latency",
-      "description": "Measures the response time of the guestbook UI API, indicating how quickly the service responds to requests.",
-      "target": 200,
-      "window": "30d",
-      "golden_signal": "Latency",
-      "description_zh": "這個指標衡量 guestbook UI API 的響應時間，顯示服務對請求的反應速度。對用戶來說，快速的響應時間意味著更好的使用體驗，特別是在高流量時期。"
-    },
-    {
-      "id": "slo-003",
-      "name": "Service Traffic",
-      "description": "Measures the number of requests received by the guestbook UI service over a specified time period.",
-      "target": 10000,
-      "window": "30d",
-      "golden_signal": "Traffic",
-      "description_zh": "這個指標衡量在特定時間內，guestbook UI 服務接收到的請求數量。這對於了解服務的使用情況和流量模式非常重要，幫助團隊進行資源規劃。"
+      "golden_signal": "Saturation",
+      "description_zh": "這個指標衡量 guestbook UI 部署的平均 CPU 使用率，顯示服務使用資源的效率。適當的 CPU 使用率可以幫助確保服務在高負載下仍能正常運行。"
     }
   ],
   "generatedFiles": {

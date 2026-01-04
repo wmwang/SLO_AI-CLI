@@ -1,63 +1,56 @@
 {
+  "annotations": {
+    "list": []
+  },
   "panels": [
     {
+      "datasource": "Prometheus",
       "type": "graph",
-      "title": "API Availability",
+      "title": "Average CPU Utilization",
       "targets": [
         {
-          "expr": "api_availability",
-          "legendFormat": "API Availability",
+          "expr": "avg(rate(container_cpu_usage_seconds_total{job=\"kubelet\", image! = \"\", container! = \"POD\"}[5m])) by (pod)",
+          "format": "time_series",
+          "intervalFactor": 2,
+          "legendFormat": "{{pod}}",
           "refId": "A"
         }
       ],
+      "lines": true,
+      "fill": 1,
+      "xaxis": {
+        "mode": "time"
+      },
       "yaxes": [
         {
           "format": "percent",
-          "label": "Availability",
-          "min": 0,
-          "max": 100
-        }
-      ]
-    },
-    {
-      "type": "graph",
-      "title": "API Latency",
-      "targets": [
-        {
-          "expr": "api_latency",
-          "legendFormat": "API Latency (95th Percentile)",
-          "refId": "B"
-        }
-      ],
-      "yaxes": [
-        {
-          "format": "seconds",
-          "label": "Latency",
+          "label": "CPU Utilization",
           "min": 0,
           "max": 1
-        }
-      ]
-    },
-    {
-      "type": "graph",
-      "title": "Service Traffic",
-      "targets": [
+        },
         {
-          "expr": "service_traffic",
-          "legendFormat": "Service Traffic",
-          "refId": "C"
+          "format": "short"
         }
       ],
-      "yaxes": [
+      "thresholds": [
         {
-          "format": "short",
-          "label": "Requests",
-          "min": 0
+          "value": 0.7,
+          "colorMode": "critical",
+          "op": ">=",
+          "fill": true,
+          "line": true
+        },
+        {
+          "value": 0.9,
+          "colorMode": "warning",
+          "op": ">=",
+          "fill": true,
+          "line": true
         }
       ]
     }
   ],
-  "title": "SLO Dashboard",
   "schemaVersion": 26,
-  "version": 1
+  "version": 1,
+  "refresh": "5s"
 }

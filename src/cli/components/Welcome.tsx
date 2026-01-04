@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Text } from 'ink';
 import SelectInput from 'ink-select-input';
 import figlet from 'figlet';
+import Gradient from 'ink-gradient';
 
 interface WelcomeProps {
     onSelect: (mode: 'NEW' | 'OPTIMIZE') => void;
@@ -12,11 +13,12 @@ const Welcome: React.FC<WelcomeProps> = ({ onSelect }) => {
 
     useEffect(() => {
         // Generate ASCII Logo on mount
+        // Font 'ANSI Shadow' provides a solid, 3D look
         figlet.text('AI SLO Agent', {
-            font: 'Big', // Use a big font
+            font: 'ANSI Shadow',
             horizontalLayout: 'default',
             verticalLayout: 'default',
-            width: 80,
+            width: 100,
             whitespaceBreak: true
         }, function (err, data) {
             if (err) {
@@ -40,7 +42,10 @@ const Welcome: React.FC<WelcomeProps> = ({ onSelect }) => {
     return (
         <Box flexDirection="column">
             <Box marginBottom={1}>
-                <Text color="blue">{logo}</Text>
+                {/* Apply Gradient to the Logo */}
+                <Gradient name="morning">
+                    <Text>{logo}</Text>
+                </Gradient>
             </Box>
 
             <Text bold>Welcome to the AI Agent. Please select a mode:</Text>

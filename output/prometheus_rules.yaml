@@ -1,44 +1,25 @@
 groups:
-  - name: SLOs
+  - name: slo-rules
     rules:
-      - record: api_availability
-        expr: (sum(rate(http_requests_total{job="guestbook-ui", status="200"}[30d])) / sum(rate(http_requests_total{job="guestbook-ui"}[30d]))) * 100
+      - record: avg_cpu_utilization
+        expr: avg(rate(container_cpu_usage_seconds_total{job="kubelet", image!="", container!="POD"}[5m])) by (pod)
         labels:
-          slo: "API Availability"
+          service: guestbook-ui
 
-      - alert: ApiAvailabilityAlert
-        expr: api_availability < 99.9
-        for: 30d
-        labels:
-          severity: critical
-        annotations:
-          summary: "API Availability is below target"
-          description: "API Availability is at {{ $value }}%, which is below the target of 99.9% over the last 30 days."
-
-      - record: api_latency
-        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="guestbook-ui"}[30d])) by (le))
-        labels:
-          slo: "API Latency"
-
-      - alert: ApiLatencyAlert
-        expr: api_latency > 0.2
-        for: 30d
+      - alert: HighCpuUtilization
+        expr: avg(rate(container_cpu_usage_seconds_total{job="kubelet", image!="", container!="POD"}[5m])) by (pod) > 0.7
+        for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "API Latency is above target"
-          description: "API Latency is at {{ $value }}s, which is above the target of 200ms over the last 30 days."
+          summary: "High CPU Utilization detected for guestbook UI"
+          description: "The average CPU utilization is above 70% for the last 5 minutes."
 
-      - record: service_traffic
-        expr: sum(rate(http_requests_total{job="guestbook-ui"}[30d]))
+      - alert: CriticalCpuUtilization
+        expr: avg(rate(container_cpu_usage_seconds_total{job="kubelet", image!="", container!="POD"}[5m])) by (pod) > 0.9
+        for: 5m
         labels:
-          slo: "Service Traffic"
-
-      - alert: ServiceTrafficAlert
-        expr: service_traffic < 10000
-        for: 30d
-        labels:
-          severity: info
+          severity: critical
         annotations:
-          summary: "Service Traffic is below target"
-          description: "Service Traffic is at {{ $value }} requests, which is below the target of 10000 requests over the last 30 days.",
+          summary: "Critical CPU Utilization detected for guestbook UI"
+          description: "The average CPU utilization is above 90% for the last 5 minutes.",

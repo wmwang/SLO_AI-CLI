@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { SLO } from '../../agent/state.js';
+import TypewriterText from './TypewriterText.js';
 
 interface SLOSelectorProps {
     items: SLO[];
@@ -56,6 +57,18 @@ const SLOSelector: React.FC<SLOSelectorProps> = ({ items, onSubmit }) => {
 
                     const signalColor = getSignalColor(item.golden_signal);
 
+                    // Determine delay: Sum of all previous characters * speed + some buffer
+                    const previousItems = items.slice(0, index);
+                    // Speed is defined inside TypewriterText as 30ms (default)
+                    const speed = 20;
+                    let delay = 0;
+                    if (index > 0) {
+                        delay = previousItems.reduce((acc, prevItem) => {
+                            const len = prevItem.description_zh?.length || 0;
+                            return acc + (len * speed) + 500; // 500ms pause between items
+                        }, 0);
+                    }
+
                     return (
                         <Box key={item.id} flexDirection="column" marginBottom={1} borderStyle={isFocus ? "round" : undefined} borderColor={isFocus ? "cyan" : undefined} paddingX={1}>
                             <Box>
@@ -77,7 +90,8 @@ const SLOSelector: React.FC<SLOSelectorProps> = ({ items, onSubmit }) => {
                             </Box>
                             {item.description_zh && (
                                 <Box marginLeft={4} marginTop={0} borderStyle="single" borderColor="gray" paddingX={1}>
-                                    <Text color="yellow">說明: {item.description_zh}</Text>
+                                    <Text color="yellow">說明: </Text>
+                                    <TypewriterText text={item.description_zh} color="yellow" delay={delay} speed={speed} />
                                 </Box>
                             )}
                         </Box>
