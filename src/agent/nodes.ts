@@ -11,8 +11,12 @@ import * as path from "path";
 dotenv.config();
 
 const model = new ChatOpenAI({
-    modelName: "gpt-4o-mini",
+    modelName: process.env.OPENAI_MODEL_NAME || "gpt-4o-mini",
     temperature: 0,
+    configuration: {
+        baseURL: process.env.OPENAI_API_BASE,
+        apiKey: process.env.OPENAI_API_KEY,
+    }
 });
 
 // Schema for SLO Recommendation
@@ -20,7 +24,7 @@ const SLOSchema = z.object({
     id: z.string(),
     name: z.string(),
     description: z.string(),
-    target: z.number().describe("Availability Target % (e.g., 99.9). MUST be between 0 and 100."),
+    target: z.number().nullable().describe("Availability Target % (e.g., 99.9). MUST be between 0 and 100."),
     threshold: z.string().nullable().describe("Optional threshold (e.g., '200ms'). Return null if not applicable (e.g. for simple errors)."),
     window: z.string(),
     golden_signal: z.string().describe("One of: Latency, Traffic, Errors, Saturation"),
@@ -36,7 +40,8 @@ export const recommendSLOsNode = async (state: typeof AgentState.State) => {
     logger.log("Analyzing K8s manifests...", "ai", { k8sManifests: state.k8sManifests });
     logger.log(`Manifest content length: ${state.k8sManifests.length} chars`, "info");
 
-    const chain = SLO_RECOMMENDER_PROMPT.pipe(model.withStructuredOutput(RecommendationOutput));
+    // Use standard chain without OpenAI-specific structured output
+    const chain = SLO_RECOMMENDER_PROMPT.pipe(model);
 
     // Log the complete API payload that will be sent to LLM
     const messages = await SLO_RECOMMENDER_PROMPT.formatMessages({
@@ -52,9 +57,52 @@ export const recommendSLOsNode = async (state: typeof AgentState.State) => {
     };
     logger.log(`Complete API Payload`, "info", apiPayload);
 
-    const result = await chain.invoke({
+    const response = await chain.invoke({
         k8s_manifests: state.k8sManifests,
     });
+
+    // Manually parse JSON from response
+    const content = response.content as string;
+    let result;
+    try {
+        // Try to extract JSON from markdown code blocks if present
+        const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || content.match(/```\n?([\s\S]*?)\n?```/);
+        const jsonString = jsonMatch ? jsonMatch[1] : content;
+        result = JSON.parse(jsonString);
+
+        // If result is an array, wrap it in the expected object structure
+        if (Array.isArray(result)) {
+            result = { slos: result };
+        }
+
+        // Normalize fields if LLM used different keys
+        if (result.slos && Array.isArray(result.slos)) {
+            result.slos = result.slos.map((slo: any) => {
+                let targetVal = slo.target !== undefined ? slo.target : slo.target_percentage;
+                // Handle string numbers or nulls
+                if (typeof targetVal === 'string') {
+                    targetVal = parseFloat(targetVal);
+                }
+                if (targetVal === null || targetVal === undefined || isNaN(targetVal)) {
+                    targetVal = 99.9; // Safe default
+                }
+
+                return {
+                    ...slo,
+                    target: targetVal,
+                    window: slo.window !== undefined ? slo.window : slo.time_window
+                };
+            });
+        }
+
+        // Validate with Zod schema
+        const validated = RecommendationOutput.parse(result);
+        result = validated;
+    } catch (error: any) {
+        logger.log(`Failed to parse LLM response as JSON: ${error.message}`, "error");
+        logger.log(`Raw response: ${content}`, "error");
+        throw new Error(`LLM did not return valid JSON: ${error.message}`);
+    }
 
     logger.log(`Received ${result.slos.length} recommendations from LLM.`, "ai", { recommendedSLOs: result.slos });
 
@@ -80,7 +128,8 @@ export const generateArtifactsNode = async (state: typeof AgentState.State) => {
         sloth_id: slo.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
     }));
 
-    const chain = ARTIFACT_GENERATOR_PROMPT.pipe(model.withStructuredOutput(ArtifactsOutput));
+    // Use standard chain without OpenAI-specific structured output
+    const chain = ARTIFACT_GENERATOR_PROMPT.pipe(model);
 
     // Sloth Self-Healing Loop
     let attempts = 0;
@@ -99,19 +148,32 @@ export const generateArtifactsNode = async (state: typeof AgentState.State) => {
             selected_slos: JSON.stringify(slosWithStrictIds, null, 2),
         };
 
-        // If we have an error, we need a way to pass it.
-        // The current PromptTemplate might not support 'error_context' variable if strictly typed,
-        // but we can append it to the JSON string or modify the prompt dynamically.
-        // A cleaner way relies on the prompt handling extra inputs or just string concatenation.
-
-        // Let's verify ARTIFACT_GENERATOR_PROMPT in prompts.ts.
-        // Assuming strict variables, modifying the 'selected_slos' string is a hack but effective:
         if (lastError) {
             // Append error instruction to the input data so the LLM sees it
             promptInput.selected_slos += `\n\n[IMPORTANT] PREVIOUS GENERATION FAILED WITH SLOTH ERROR:\n${lastError}\n\nPLEASE FIX THE YAML TO RESOLVE THIS ERROR.\nHint 1: If the error is 'both error and total queries can't be the same', you MUST either change the 'error_query' to be different or switch to 'raw' SLI type.\nHint 2: If the error is 'template must contain the {{ .window }} variable', it means your PromQL missing the window parameter. For Gauge metrics (like memory/saturation), wraps the metric in 'max_over_time(...[{{ .window }}])' or 'avg_over_time(...[{{ .window }}])'.`;
         }
 
-        const result = await chain.invoke(promptInput);
+        const response = await chain.invoke(promptInput);
+
+        // Manually parse JSON from response
+        const content = response.content as string;
+        let result;
+        try {
+            // Try to extract JSON from markdown code blocks if present
+            const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || content.match(/```\n?([\s\S]*?)\n?```/);
+            const jsonString = jsonMatch ? jsonMatch[1] : content;
+            result = JSON.parse(jsonString);
+
+            // Validate with Zod schema
+            const validated = ArtifactsOutput.parse(result);
+            result = validated;
+        } catch (error: any) {
+            logger.log(`Failed to parse LLM response as JSON: ${error.message}`, "error");
+            // If parsing fails, we treat it as an error to retry if possible, or just fail this attempt
+            lastError = `JSON Parsing Error: ${error.message}`;
+            continue; // Retry loop
+        }
+
         finalResult = result;
 
         // Save raw spec locally for validation

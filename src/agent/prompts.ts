@@ -16,7 +16,30 @@ For each SLO, provide:
 
 Focus on Golden Signals: Latency, Traffic, Errors, and Saturation.
 Consider the type of resource (Deployment, Service, Ingress, StatefulSet) in the manifests.
-Output strictly in JSON format matching the schema.`),
+Output strictly in JSON format. The output MUST be a valid JSON object with a single key "slos" containing an array of objects.
+
+JSON Structure Constraint:
+{{
+  "slos": [
+    {{
+      "id": "slo-001",
+      "name": "API Availability",
+      "description": "...",
+      "target": 99.9,
+      "threshold": null,
+      "window": "30d",
+      "golden_signal": "Errors",
+      "description_zh": "..."
+    }}
+  ]
+}}
+
+CRITICAL RULES:
+1. Field names MUST be exactly: "id", "name", "description", "target", "threshold", "window", "golden_signal", "description_zh". DO NOT use "target_percentage" or "time_window".
+2. "target" MUST be a number between 0 and 100. It CANNOT be null. If specific target is unknown, use 99.9 as default.
+3. "threshold" can be null or a string like "200ms".
+4. "golden_signal" must be one of: "Latency", "Traffic", "Errors", "Saturation".
+5. Do NOT include any markdown formatting (like \`\`\`json) in the response, just the raw JSON string if possible, or minimally wrapped.`),
   HumanMessagePromptTemplate.fromTemplate(`<task>
 K8s Manifests:
 {k8s_manifests}
@@ -81,7 +104,26 @@ Assume standard metrics are available.
 
 IMPORTANT: For the Sloth YAML 'name' field, you MUST use the provided 'sloth_id' field from the input JSON. Do NOT use the human-readable 'name' or 'id'. The 'sloth_id' has been pre-validated to ensure it contains no spaces.
 
-Provide the output as a JSON object with three keys: "prometheus_yaml", "grafana_json", and "sloth_yaml".`),
+Output strictly in JSON format. The output MUST be a valid JSON object with the following structure:
+{{
+  "prometheus_yaml": "...", // The Content of the Prometheus Rules YAML
+  "grafana_json": "...",    // The Content of the Grafana Dashboard JSON
+  "sloth_yaml": "..."       // The Content of the Sloth Spec YAML
+}}
+
+**CRITICAL RULES FOR OUTPUT:**
+1. Return ONLY the JSON object.
+2. The values must be strings containing the file content. 
+3. Escape newlines properly in the JSON strings (e.g. \\n).
+4. Do NOT include markdown code blocks around the whole JSON response if possible, or minimally wrap in '''json.
+5. Ensure the 'sloth_yaml' is valid Sloth spec.
+
+Example of expected structure:
+{{
+  "prometheus_yaml": "groups:\\n  - name: example\\n    rules: ...",
+  "grafana_json": "{{\\"dashboard\\": ...}}",
+  "sloth_yaml": "version: \\"prometheus/v1\\"\\nservice: ..."
+}}`),
   HumanMessagePromptTemplate.fromTemplate(`<task>
 User Selected SLOs:
 {selected_slos}
