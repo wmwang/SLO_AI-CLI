@@ -1,7 +1,7 @@
-import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate } from "@langchain/core/prompts";
 
-export const SLO_RECOMMENDER_PROMPT = ChatPromptTemplate.fromTemplate(`
-You are a Site Reliability Engineering (SRE) expert.
+export const SLO_RECOMMENDER_PROMPT = ChatPromptTemplate.fromMessages([
+  SystemMessagePromptTemplate.fromTemplate(`You are a Site Reliability Engineering (SRE) expert.
 Your task is to analyze the provided Kubernetes manifests and recommend 5 to 8 suitable Service Level Objectives (SLOs).
 
 For each SLO, provide:
@@ -16,22 +16,19 @@ For each SLO, provide:
 
 Focus on Golden Signals: Latency, Traffic, Errors, and Saturation.
 Consider the type of resource (Deployment, Service, Ingress, StatefulSet) in the manifests.
-
+Output strictly in JSON format matching the schema.`),
+  HumanMessagePromptTemplate.fromTemplate(`<task>
 K8s Manifests:
 {k8s_manifests}
+</task>`)
+]);
 
-Output strictly in JSON format matching the schema.
-`);
-
-export const ARTIFACT_GENERATOR_PROMPT = ChatPromptTemplate.fromTemplate(`
-You are an expert in Prometheus and Grafana.
+export const ARTIFACT_GENERATOR_PROMPT = ChatPromptTemplate.fromMessages([
+  SystemMessagePromptTemplate.fromTemplate(`You are an expert in Prometheus and Grafana.
 Based on the User Selected SLOs, generate:
 1. A Prometheus Rule (YAML) containing recording rules and alerting rules for these SLOs.
 2. A Grafana Dashboard (JSON) to visualize these SLOs.
 3. A Sloth SLO Spec (YAML) that strictly follows the Sloth v1 "prometheus/v1" specification.
-
-User Selected SLOs:
-{selected_slos}
 
 version: "prometheus/v1"
 service: "my-service"
@@ -84,21 +81,24 @@ Assume standard metrics are available.
 
 IMPORTANT: For the Sloth YAML 'name' field, you MUST use the provided 'sloth_id' field from the input JSON. Do NOT use the human-readable 'name' or 'id'. The 'sloth_id' has been pre-validated to ensure it contains no spaces.
 
-Provide the output as a JSON object with three keys: "prometheus_yaml", "grafana_json", and "sloth_yaml".
-`);
+Provide the output as a JSON object with three keys: "prometheus_yaml", "grafana_json", and "sloth_yaml".`),
+  HumanMessagePromptTemplate.fromTemplate(`<task>
+User Selected SLOs:
+{selected_slos}
+</task>`)
+]);
 
-export const SLO_OPTIMIZER_PROMPT = ChatPromptTemplate.fromTemplate(`
-You are an SRE consultant auditing existing SLOs.
-Here is the current metrics data/status and the configured SLOs.
-
-Metrics Data / Context:
-{metrics_data}
-
+export const SLO_OPTIMIZER_PROMPT = ChatPromptTemplate.fromMessages([
+  SystemMessagePromptTemplate.fromTemplate(`You are an SRE consultant auditing existing SLOs.
 Analyze the burn rate and error budget consumption.
 Provide a Markdown report with:
 1. Analysis of current health.
 2. Recommendations for optimization (e.g., "Relax target to 99.5%", "Increase alert window").
 3. Specific reasons for changes.
 
-Keep it concise and actionable.
-`);
+Keep it concise and actionable.`),
+  HumanMessagePromptTemplate.fromTemplate(`<task>
+Metrics Data / Context:
+{metrics_data}
+</task>`)
+]);

@@ -38,11 +38,19 @@ export const recommendSLOsNode = async (state: typeof AgentState.State) => {
 
     const chain = SLO_RECOMMENDER_PROMPT.pipe(model.withStructuredOutput(RecommendationOutput));
 
-    // Log the full prompt
-    const formattedPrompt = await SLO_RECOMMENDER_PROMPT.format({
+    // Log the complete API payload that will be sent to LLM
+    const messages = await SLO_RECOMMENDER_PROMPT.formatMessages({
         k8s_manifests: state.k8sManifests
     });
-    logger.log(`Generated Prompt for Recommender`, "info", { fullPrompt: formattedPrompt });
+    const apiPayload = {
+        model: "gpt-4o-mini",  // Model name from line 14
+        messages: messages.map(msg => ({
+            role: msg._getType() === 'system' ? 'system' : 'user',
+            content: msg.content
+        })),
+        temperature: 0
+    };
+    logger.log(`Complete API Payload`, "info", apiPayload);
 
     const result = await chain.invoke({
         k8s_manifests: state.k8sManifests,
@@ -163,11 +171,20 @@ export const optimizeSLOsNode = async (state: typeof AgentState.State) => {
 
     let fullContent = "";
 
-    // Log the full prompt
-    const formattedPrompt = await SLO_OPTIMIZER_PROMPT.format({
+    // Log the complete API payload that will be sent to LLM
+    const messages = await SLO_OPTIMIZER_PROMPT.formatMessages({
         metrics_data: state.metricsData || "No specific metrics provided, please perform general audit based on best practices.",
     });
-    logger.log(`Generated Prompt for Optimization`, "info", { fullPrompt: formattedPrompt });
+    const apiPayload = {
+        model: "gpt-4o-mini",  // Model name from line 14
+        messages: messages.map(msg => ({
+            role: msg._getType() === 'system' ? 'system' : 'user',
+            content: msg.content
+        })),
+        temperature: 0,
+        stream: true  // This endpoint uses streaming
+    };
+    logger.log(`Complete API Payload`, "info", apiPayload);
 
     const stream = await chain.stream({
         metrics_data: state.metricsData || "No specific metrics provided, please perform general audit based on best practices.",
