@@ -64,6 +64,9 @@ IMPORTANT: For PromQL queries in the Sloth Spec:
    - WRONG: error_query: "sum(rate(my_metric{{label="value"}}[{{{{ .window }}}}]))" (This is invalid YAML)
 4. Use the 'threshold' field from the input JSON (if present) for values in the query (e.g., latency > 0.2, CPU > 0.8).
 5. Use the 'target' field (Availability %) for the Sloth 'objective'.
+6. **CONSTRAINT**: For 'events' SLI, 'error_query' and 'total_query' MUST be different. If they are identical, query validation will fail.
+   - **For "Traffic" or "Volume" SLOs**: usage of 'events' SLI is often incorrect because there are no "bad" events, just low volume.
+   - **RECOMMENDATION**: For Traffic/Volume, use 'raw' SLI with a boolean alerting expression (e.g., 'sum(rate(http_requests_total[{{ .window }}])) < 10').
 
 Example (Events):
   sli:
@@ -71,10 +74,11 @@ Example (Events):
       error_query: 'sum(rate(http_requests_total{{status=~"5.."}}[{{{{ .window }}}}]))'
       total_query: 'sum(rate(http_requests_total[{{{{ .window }}}}]))'
 
-Example (Raw - CPU > 80% is bad):
+Example (Raw - Gauge/Saturation):
+  # Gauges (like memory/cpu) MUST be aggregated over time to use {{{{ .window }}}}
   sli:
     raw:
-      error_ratio_query: 'sum(rate(container_cpu_usage_seconds_total{{job="app"}}[{{{{ .window }}}}])) / sum(machine_cpu_cores) > bool 0.8'
+      error_ratio_query: 'max_over_time(container_memory_usage_bytes{{container_name="app"}}[{{{{ .window }}}}]) / sum(container_memory_limit_bytes) > bool 0.8'
 
 Assume standard metrics are available.
 

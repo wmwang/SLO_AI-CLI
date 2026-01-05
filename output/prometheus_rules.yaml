@@ -1,15 +1,57 @@
 groups:
-  - name: guestbook-ui-saturation
+  - name: guestbook-ui-slos
     rules:
-      - record: guestbook_ui_saturation
-        expr: sum(rate(container_memory_usage_bytes{job="guestbook-ui"}[30d])) / sum(container_memory_limit_bytes{job="guestbook-ui"}) * 100
-        labels:
-          service: guestbook-ui
-      - alert: GuestbookUISaturationHigh
-        expr: guestbook_ui_saturation > 80
+      - record: guestbook_ui_availability
+        expr: 'sum(rate(http_requests_total{status=~"2.."}[30d])) / sum(rate(http_requests_total[30d]))'
+      - alert: GuestbookUIAvailabilityAlert
+        expr: 'sum(rate(http_requests_total{status=~"2.."}[30d])) / sum(rate(http_requests_total[30d])) < 0.999'
         for: 5m
         labels:
           severity: critical
         annotations:
-          summary: "Guestbook UI Saturation High"
-          description: "The saturation of the Guestbook UI service is above 80% for more than 5 minutes.",
+          summary: "Guestbook UI Availability Alert"
+          description: "Availability is below 99.9%"
+
+      - record: guestbook_ui_latency
+        expr: 'histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[30d])) by (le))'
+      - alert: GuestbookUILatencyAlert
+        expr: 'histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[30d])) by (le)) > 0.2'
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Guestbook UI Latency Alert"
+          description: "Latency is above 200ms"
+
+      - record: guestbook_ui_error_rate
+        expr: 'sum(rate(http_requests_total{status=~"5.."}[30d])) / sum(rate(http_requests_total[30d]))'
+      - alert: GuestbookUIErrorRateAlert
+        expr: 'sum(rate(http_requests_total{status=~"5.."}[30d])) / sum(rate(http_requests_total[30d])) > 0.001'
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Guestbook UI Error Rate Alert"
+          description: "Error rate is above 0.1%"
+
+      - record: guestbook_ui_traffic
+        expr: 'sum(rate(http_requests_total[30d]))'
+      - alert: GuestbookUITrafficAlert
+        expr: 'sum(rate(http_requests_total[30d])) < 10'
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Guestbook UI Traffic Alert"
+          description: "Traffic is below expected threshold"
+
+      - record: guestbook_ui_saturation
+        expr: 'max_over_time(container_memory_usage_bytes{container_name="guestbook-ui"}[30d]) / sum(container_memory_limit_bytes{container_name="guestbook-ui"})'
+      - alert: GuestbookUISaturationAlert
+        expr: 'max_over_time(container_memory_usage_bytes{container_name="guestbook-ui"}[30d]) / sum(container_memory_limit_bytes{container_name="guestbook-ui"}) > 0.8'
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Guestbook UI Saturation Alert"
+          description: "Saturation is above 80%"

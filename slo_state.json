@@ -1,15 +1,55 @@
 {
-  "lastUpdated": "2026-01-04T07:26:26.819Z",
+  "lastUpdated": "2026-01-04T15:12:46.725Z",
   "slos": [
+    {
+      "id": "slo-001",
+      "name": "Guestbook UI Availability",
+      "description": "Measures the availability of the Guestbook UI service, ensuring it is reachable and operational for users.",
+      "target": 99.9,
+      "threshold": null,
+      "window": "30d",
+      "golden_signal": "Errors",
+      "description_zh": "這個指標測量客戶端是否能夠成功訪問 Guestbook UI 服務。高可用性意味著用戶能夠順利使用應用程式，這對於用戶體驗至關重要。"
+    },
+    {
+      "id": "slo-002",
+      "name": "Guestbook UI Latency",
+      "description": "Measures the response time of the Guestbook UI service, ensuring that requests are processed within an acceptable time frame.",
+      "target": 99.9,
+      "threshold": "200ms",
+      "window": "30d",
+      "golden_signal": "Latency",
+      "description_zh": "這個指標測量 Guestbook UI 服務的響應時間。低延遲意味著用戶能夠快速獲得所需的資訊，這對於提升用戶滿意度非常重要。"
+    },
+    {
+      "id": "slo-003",
+      "name": "Guestbook UI Error Rate",
+      "description": "Measures the rate of errors encountered by users when accessing the Guestbook UI service, indicating the reliability of the service.",
+      "target": 99.9,
+      "threshold": null,
+      "window": "30d",
+      "golden_signal": "Errors",
+      "description_zh": "這個指標測量用戶在訪問 Guestbook UI 服務時遇到的錯誤比例。低錯誤率意味著服務穩定，能夠提供良好的用戶體驗。"
+    },
+    {
+      "id": "slo-004",
+      "name": "Guestbook UI Traffic",
+      "description": "Measures the amount of traffic handled by the Guestbook UI service, ensuring it can handle user demand effectively.",
+      "target": 99.9,
+      "threshold": null,
+      "window": "30d",
+      "golden_signal": "Traffic",
+      "description_zh": "這個指標測量 Guestbook UI 服務處理的流量量。適當的流量管理確保服務能夠應對用戶需求，避免過載情況發生。"
+    },
     {
       "id": "slo-005",
       "name": "Guestbook UI Saturation",
-      "description": "Measures the resource utilization of the Guestbook UI service, ensuring that it operates within safe limits to prevent degradation of performance.",
+      "description": "Measures the resource utilization of the Guestbook UI service, ensuring it operates within safe limits to prevent performance degradation.",
       "target": 80,
       "threshold": null,
       "window": "30d",
       "golden_signal": "Saturation",
-      "description_zh": "這個指標衡量了 Guestbook UI 服務的資源使用情況。過高的資源使用可能導致性能下降，因此保持在安全範圍內是非常重要的。"
+      "description_zh": "這個指標測量 Guestbook UI 服務的資源使用情況。保持在安全範圍內的資源使用可以防止性能下降，確保服務穩定運行。"
     }
   ],
   "generatedFiles": {

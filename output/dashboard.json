@@ -2,10 +2,10 @@
   "panels": [
     {
       "type": "graph",
-      "title": "Guestbook UI Saturation",
+      "title": "Guestbook UI Availability",
       "targets": [
         {
-          "expr": "guestbook_ui_saturation",
+          "expr": "sum(rate(http_requests_total{status=~\"2..\"}[30d])) / sum(rate(http_requests_total[30d]))",
           "format": "time_series"
         }
       ],
@@ -13,15 +13,75 @@
         {
           "format": "percent",
           "min": 0,
-          "max": 100
-        },
+          "max": 1
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Guestbook UI Latency",
+      "targets": [
         {
-          "show": false
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[30d])) by (le))",
+          "format": "time_series"
         }
       ],
-      "lines": true,
-      "fill": 1
+      "yaxes": [
+        {
+          "format": "ms",
+          "min": 0
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Guestbook UI Error Rate",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{status=~\"5..\"}[30d])) / sum(rate(http_requests_total[30d]))",
+          "format": "time_series"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "percent",
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Guestbook UI Traffic",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[30d]))",
+          "format": "time_series"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "short",
+          "min": 0
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Guestbook UI Saturation",
+      "targets": [
+        {
+          "expr": "max_over_time(container_memory_usage_bytes{container_name=\"guestbook-ui\"}[30d]) / sum(container_memory_limit_bytes{container_name=\"guestbook-ui\"})",
+          "format": "time_series"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "percent",
+          "min": 0,
+          "max": 1
+        }
+      ]
     }
-  ],
-  "title": "Guestbook UI SLO Dashboard"
+  ]
 }

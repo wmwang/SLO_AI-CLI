@@ -1,16 +1,77 @@
 version: "prometheus/v1"
 service: "my-service"
 slos:
-  - name: "guestbook-ui-saturation"
+  - name: "guestbook-ui-availability"
     objective: 99.9
     sli:
       events:
-        error_query: 'sum(rate(container_memory_usage_bytes{job="guestbook-ui", status=~"5.."}[{{ .window }}]))'
-        total_query: 'sum(rate(container_memory_usage_bytes{job="guestbook-ui"}[{{ .window }}]))'
+        error_query: 'sum(rate(http_requests_total{status=~"5.."}[{{ .window }}]))'
+        total_query: 'sum(rate(http_requests_total[{{ .window }}]))'
     alerting:
-      name: GuestbookUISaturationHigh
+      name: GuestbookUIAvailabilityAlert
       labels:
         category: "availability"
+      page_alert:
+        labels:
+          severity: critical
+      ticket_alert:
+        labels:
+          severity: warning
+  - name: "guestbook-ui-latency"
+    objective: 99.9
+    sli:
+      raw:
+        error_ratio_query: 'histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[{{ .window }}])) by (le)) > bool 0.2'
+    alerting:
+      name: GuestbookUILatencyAlert
+      labels:
+        category: "latency"
+      page_alert:
+        labels:
+          severity: critical
+      ticket_alert:
+        labels:
+          severity: warning
+  - name: "guestbook-ui-error-rate"
+    objective: 99.9
+    sli:
+      events:
+        error_query: 'sum(rate(http_requests_total{status=~"5.."}[{{ .window }}]))'
+        total_query: 'sum(rate(http_requests_total[{{ .window }}]))'
+    alerting:
+      name: GuestbookUIErrorRateAlert
+      labels:
+        category: "error"
+      page_alert:
+        labels:
+          severity: critical
+      ticket_alert:
+        labels:
+          severity: warning
+  - name: "guestbook-ui-traffic"
+    objective: 99.9
+    sli:
+      raw:
+        error_ratio_query: 'sum(rate(http_requests_total[{{ .window }}])) < bool 10'
+    alerting:
+      name: GuestbookUITrafficAlert
+      labels:
+        category: "traffic"
+      page_alert:
+        labels:
+          severity: warning
+      ticket_alert:
+        labels:
+          severity: info
+  - name: "guestbook-ui-saturation"
+    objective: 80
+    sli:
+      raw:
+        error_ratio_query: 'max_over_time(container_memory_usage_bytes{container_name="guestbook-ui"}[{{ .window }}]) / sum(container_memory_limit_bytes{container_name="guestbook-ui"}) > bool 0.8'
+    alerting:
+      name: GuestbookUISaturationAlert
+      labels:
+        category: "saturation"
       page_alert:
         labels:
           severity: critical
