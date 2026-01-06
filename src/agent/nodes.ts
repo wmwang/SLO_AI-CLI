@@ -1,7 +1,7 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { z } from "zod";
 import * as dotenv from "dotenv";
-import { SLO_RECOMMENDER_PROMPT, ARTIFACT_GENERATOR_PROMPT, SLO_OPTIMIZER_PROMPT } from "./prompts.js";
+import { SLO_RECOMMENDER_PROMPT, ARTIFACT_GENERATOR_PROMPT, SLO_OPTIMIZER_PROMPT, SLO_REFINEMENT_PROMPT } from "./prompts.js";
 import { AgentState, SLO } from "./state.js";
 import { logger } from "../utils/logger.js";
 import { SlothRunner } from "../services/sloth_runner.js";
@@ -57,12 +57,15 @@ export const recommendSLOsNode = async (state: typeof AgentState.State) => {
     };
     logger.log(`Complete API Payload`, "info", apiPayload);
 
-    const response = await chain.invoke({
+    const stream = await chain.stream({
         k8s_manifests: state.k8sManifests,
     });
 
-    // Manually parse JSON from response
-    const content = response.content as string;
+    let fullContent = "";
+    for await (const chunk of stream) {
+        fullContent += chunk.content;
+    }
+    const content = fullContent;
     let result;
     try {
         // Try to extract JSON from markdown code blocks if present
@@ -153,10 +156,15 @@ export const generateArtifactsNode = async (state: typeof AgentState.State) => {
             promptInput.selected_slos += `\n\n[IMPORTANT] PREVIOUS GENERATION FAILED WITH SLOTH ERROR:\n${lastError}\n\nPLEASE FIX THE YAML TO RESOLVE THIS ERROR.\nHint 1: If the error is 'both error and total queries can't be the same', you MUST either change the 'error_query' to be different or switch to 'raw' SLI type.\nHint 2: If the error is 'template must contain the {{ .window }} variable', it means your PromQL missing the window parameter. For Gauge metrics (like memory/saturation), wraps the metric in 'max_over_time(...[{{ .window }}])' or 'avg_over_time(...[{{ .window }}])'.`;
         }
 
-        const response = await chain.invoke(promptInput);
+        const stream = await chain.stream(promptInput);
+
+        let fullContent = "";
+        for await (const chunk of stream) {
+            fullContent += chunk.content;
+        }
 
         // Manually parse JSON from response
-        const content = response.content as string;
+        const content = fullContent;
         let result;
         try {
             // Try to extract JSON from markdown code blocks if present
@@ -247,7 +255,6 @@ export const optimizeSLOsNode = async (state: typeof AgentState.State) => {
         stream: true  // This endpoint uses streaming
     };
     logger.log(`Complete API Payload`, "info", apiPayload);
-
     const stream = await chain.stream({
         metrics_data: state.metricsData || "No specific metrics provided, please perform general audit based on best practices.",
     });
@@ -262,5 +269,175 @@ export const optimizeSLOsNode = async (state: typeof AgentState.State) => {
 
     return {
         optimizationReport: fullContent,
+    };
+};
+
+// Node: Refine SLOs based on user feedback
+export const refineSLOsNode = async (state: typeof AgentState.State) => {
+    logger.log("Refining SLOs based on feedback", "info");
+    const { recommendedSLOs, selectedSLOs, metricsData } = state;
+
+    // We use 'selectedSLOs' as the base if available, otherwise 'recommendedSLOs'.
+    const currentSLOs = (selectedSLOs && selectedSLOs.length > 0) ? selectedSLOs : recommendedSLOs;
+
+    // metricsData is reused here to carry user feedback string
+    const feedback = metricsData || "No feedback provided";
+
+    const promptInput = await SLO_REFINEMENT_PROMPT.formatMessages({
+        current_slos: JSON.stringify(currentSLOs, null, 2),
+        user_feedback: feedback
+    });
+
+    logger.log("Refinement Payload", "info");
+    logger.log(JSON.stringify({
+        model: (model as any).modelName || "gpt-4o-mini",
+        messages: promptInput,
+        temperature: 0
+    }, null, 2));
+
+    const stream = await model.stream(promptInput);
+
+    let fullContent = "";
+    for await (const chunk of stream) {
+        fullContent += typeof chunk.content === 'string' ? chunk.content : JSON.stringify(chunk.content);
+    }
+
+    const content = fullContent;
+
+    let updatedSLOs: SLO[] = [];
+
+    try {
+        // Manual JSON parsing
+        const cleanedContent = content.replace(/```json/g, "").replace(/```/g, "").trim();
+        const parsed = JSON.parse(cleanedContent);
+
+        // Validation with Zod
+        if (parsed.slos && Array.isArray(parsed.slos)) {
+            updatedSLOs = parsed.slos.map((item: any) => ({
+                ...item,
+                target: Number(item.target) || 99.9 // Ensure number
+            }));
+        } else if (Array.isArray(parsed)) {
+            updatedSLOs = parsed; // Fallback if LLM returns array directly
+        } else {
+            logger.log(`Unexpected JSON structure in refinement: ${JSON.stringify(parsed)}`, "error");
+            updatedSLOs = currentSLOs; // Fallback
+        }
+
+    } catch (e) {
+        logger.log(`Failed to parse refinement JSON: ${e}`, "error");
+        updatedSLOs = currentSLOs; // Checkpointing: return original on failure
+    }
+
+    // Update the state. 
+    return {
+        recommendedSLOs: updatedSLOs,
+        // We reuse recommendedSLOs to update the list in UI
+    };
+};
+
+// ===== Quick Observability Mode (Phase 16) =====
+
+import { prometheusClient } from "../services/prometheus_client.js";
+import { METRIC_RECOMMENDATION_PROMPT, QUICK_DASHBOARD_PROMPT } from "./prompts.js";
+
+// Node: Discover Metrics from Prometheus
+export const discoverMetricsNode = async (state: typeof AgentState.State) => {
+    logger.log(`Discovering metrics for app="${state.appName}", namespace="${state.namespace}"`, "info");
+
+    const metrics = await prometheusClient.discoverMetrics(state.appName, state.namespace);
+    const metricNames = metrics.map(m => m.name);
+
+    logger.log(`Discovered ${metricNames.length} metrics`, "ai", { metrics: metricNames });
+
+    return {
+        discoveredMetrics: metricNames
+    };
+};
+
+// Schema for metric recommendation
+const RecommendedMetricSchema = z.object({
+    name: z.string(),
+    purpose: z.string(),
+    viz_type: z.string()
+});
+
+const MetricRecommendationOutput = z.object({
+    recommended_metrics: z.array(RecommendedMetricSchema)
+});
+
+// Node: Recommend Metrics based on user goal
+export const recommendMetricsNode = async (state: typeof AgentState.State) => {
+    logger.log("AI is selecting relevant metrics based on user goal...", "ai");
+
+    const chain = METRIC_RECOMMENDATION_PROMPT.pipe(model);
+
+    const stream = await chain.stream({
+        available_metrics: state.discoveredMetrics.join("\n"),
+        user_goal: state.userObservabilityGoal || "General observability"
+    });
+
+    let fullContent = "";
+    for await (const chunk of stream) {
+        fullContent += chunk.content;
+    }
+
+    let result;
+    try {
+        const cleanedContent = fullContent.replace(/```json/g, "").replace(/```/g, "").trim();
+        const parsed = JSON.parse(cleanedContent);
+        result = MetricRecommendationOutput.parse(parsed);
+    } catch (error: any) {
+        logger.log(`Failed to parse metric recommendation: ${error.message}`, "error");
+        throw new Error(`LLM did not return valid JSON: ${error.message}`);
+    }
+
+    const metricNames = result.recommended_metrics.map(m => m.name);
+    logger.log(`Recommended ${metricNames.length} metrics`, "ai", { metrics: result.recommended_metrics });
+
+    return {
+        recommendedMetrics: metricNames,
+        // Store full details in a serialized form for dashboard generation
+        metricsData: JSON.stringify(result.recommended_metrics)
+    };
+};
+
+// Node: Generate Quick Dashboard
+export const generateQuickDashboardNode = async (state: typeof AgentState.State) => {
+    logger.log("Generating Grafana Dashboard...", "ai");
+
+    const chain = QUICK_DASHBOARD_PROMPT.pipe(model);
+
+    const stream = await chain.stream({
+        app_name: state.appName,
+        namespace: state.namespace,
+        selected_metrics: state.metricsData || JSON.stringify(state.recommendedMetrics)
+    });
+
+    let fullContent = "";
+    for await (const chunk of stream) {
+        fullContent += chunk.content;
+    }
+
+    // Extract JSON from potential markdown blocks
+    let dashboardJson = fullContent;
+    try {
+        const jsonMatch = fullContent.match(/```json\n?([\s\S]*?)\n?```/) || fullContent.match(/```\n?([\s\S]*?)\n?```/);
+        if (jsonMatch) {
+            dashboardJson = jsonMatch[1];
+        }
+
+        // Validate it's valid JSON
+        JSON.parse(dashboardJson);
+
+    } catch (error: any) {
+        logger.log(`Warning: Dashboard JSON may be malformed: ${error.message}`, "error");
+        // Continue anyway, user can manually fix if needed
+    }
+
+    logger.log("Dashboard generated successfully", "ai");
+
+    return {
+        quickDashboard: dashboardJson
     };
 };

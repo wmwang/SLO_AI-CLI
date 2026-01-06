@@ -5,7 +5,7 @@ import figlet from 'figlet';
 import Gradient from 'ink-gradient';
 
 interface WelcomeProps {
-    onSelect: (mode: 'NEW' | 'OPTIMIZE') => void;
+    onSelect: (mode: 'NEW' | 'OPTIMIZE' | 'QUICK') => void;
 }
 
 const Welcome: React.FC<WelcomeProps> = ({ onSelect }) => {
@@ -32,7 +32,8 @@ const Welcome: React.FC<WelcomeProps> = ({ onSelect }) => {
 
     const items = [
         { label: 'Generate New SLOs (Scan K8s Manifests)', value: 'NEW' },
-        { label: 'Optimize Existing SLOs (Analyze Metrics)', value: 'OPTIMIZE' }
+        { label: 'Optimize Existing SLOs (Analyze Metrics)', value: 'OPTIMIZE' },
+        { label: 'Quick Observability (Discover Prometheus Metrics)', value: 'QUICK' }
     ];
 
     const handleSelect = (item: any) => {

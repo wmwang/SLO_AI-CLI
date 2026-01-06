@@ -31,4 +31,12 @@ export const AgentState = Annotation.Root({
     prometheusUrl: Annotation<string>(), // Input: URL for Prometheus
     metricsData: Annotation<string>(), // Input/Fetched: Raw metrics data or query results
     optimizationReport: Annotation<string>(), // Output: Markdown report from LLM
+
+    // Quick Observability Mode (Phase 16)
+    appName: Annotation<string>(), // Input: Application name
+    namespace: Annotation<string>(), // Input: Kubernetes namespace
+    discoveredMetrics: Annotation<string[]>(), // Output: List of metric names from Prometheus
+    userObservabilityGoal: Annotation<string>(), // Input: User's description of what they want to observe
+    recommendedMetrics: Annotation<string[]>(), // Output: AI-selected metrics (3-4)
+    quickDashboard: Annotation<string>(), // Output: Generated Grafana Dashboard JSON
 });

@@ -3,7 +3,7 @@ import { Box, Text } from 'ink';
 import { SLO } from '../../agent/state.js';
 
 interface ResultViewProps {
-    mode: 'NEW' | 'OPTIMIZE';
+    mode: 'NEW' | 'OPTIMIZE' | 'QUICK';
     rulesPath: string;
     dashboardPath: string;
     report: string;
@@ -84,6 +84,51 @@ const ResultView: React.FC<ResultViewProps> = ({ mode, rulesPath, dashboardPath,
                         </Box>
                     </Box>
                 )}
+            </Box>
+        );
+    } else if (mode === 'QUICK') {
+        return (
+            <Box flexDirection="column" borderStyle="double" borderColor="magenta" padding={1}>
+                <Text bold color="magenta">✨ Quick Dashboard Generated! (快速儀表板已生成)</Text>
+
+                <Box marginTop={1} flexDirection="column">
+                    <Box>
+                        <Text>📊 Grafana Dashboard: </Text>
+                        <Text color="cyan" underline>{dashboardPath}</Text>
+                    </Box>
+                </Box>
+
+                <Box marginTop={1} borderStyle="single" borderColor="yellow" flexDirection="column" paddingX={1}>
+                    <Text bold color="yellow">🚀 How to Import (匯入方式):</Text>
+
+                    <Box marginTop={1}>
+                        <Text bold>1. Open Grafana UI</Text>
+                    </Box>
+                    <Box marginLeft={2}>
+                        <Text color="gray">Navigate to your Grafana instance (e.g., http://localhost:3000)</Text>
+                    </Box>
+
+                    <Box marginTop={1}>
+                        <Text bold>2. Import Dashboard</Text>
+                    </Box>
+                    <Box marginLeft={2} flexDirection="column">
+                        <Text color="white">• Click "+" → "Import"</Text>
+                        <Text color="white">• Click "Upload JSON file"</Text>
+                        <Text color="white">• Select: <Text color="cyan">{dashboardPath}</Text></Text>
+                        <Text color="white">• Click "Load" → "Import"</Text>
+                    </Box>
+
+                    <Box marginTop={1}>
+                        <Text bold>3. View Your Metrics</Text>
+                    </Box>
+                    <Box marginLeft={2}>
+                        <Text>The dashboard will display real-time metrics from your Prometheus.</Text>
+                    </Box>
+                </Box>
+
+                <Box marginTop={1}>
+                    <Text color="gray" dimColor>💡 Tip: Make sure your Prometheus data source is configured in Grafana.</Text>
+                </Box>
             </Box>
         );
     } else {

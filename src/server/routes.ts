@@ -24,7 +24,14 @@ router.post('/analyze-manifest', async (req, res) => {
             generatedSlothSpec: "",
             metricsData: "",
             prometheusUrl: "",
-            optimizationReport: ""
+            optimizationReport: "",
+            // Phase 16 fields
+            appName: "",
+            namespace: "",
+            discoveredMetrics: [],
+            userObservabilityGoal: "",
+            recommendedMetrics: [],
+            quickDashboard: ""
         };
 
         const result = await recommendSLOsNode(inputState);
@@ -53,7 +60,14 @@ router.post('/generate-artifacts', async (req, res) => {
             generatedSlothSpec: "",
             metricsData: "",
             prometheusUrl: "",
-            optimizationReport: ""
+            optimizationReport: "",
+            // Phase 16 fields
+            appName: "",
+            namespace: "",
+            discoveredMetrics: [],
+            userObservabilityGoal: "",
+            recommendedMetrics: [],
+            quickDashboard: ""
         };
 
         const result = await generateArtifactsNode(inputState);
@@ -109,7 +123,14 @@ router.post('/optimize', async (req, res) => {
             generatedDashboard: "",
             generatedSlothSpec: "",
             prometheusUrl: "",
-            optimizationReport: ""
+            optimizationReport: "",
+            // Phase 16 fields
+            appName: "",
+            namespace: "",
+            discoveredMetrics: [],
+            userObservabilityGoal: "",
+            recommendedMetrics: [],
+            quickDashboard: ""
         };
 
         // Note: verify if optimizeSLOsNode supports streaming response?

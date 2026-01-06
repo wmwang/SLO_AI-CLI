@@ -9,7 +9,8 @@
     "build": "tsc",
     "server": "node dist/server/index.js",
     "lint": "eslint src --ext .ts,.tsx",
-    "dev": "node --loader ts-node/esm src/cli/index.tsx"
+    "dev": "node --loader ts-node/esm src/cli/index.tsx",
+    "mcp": "node dist/mcp_server.js"
   },
   "keywords": [],
   "author": "",
@@ -29,6 +30,7 @@
     "@langchain/core": "^1.1.8",
     "@langchain/langgraph": "^1.0.7",
     "@langchain/openai": "^1.2.0",
+    "@modelcontextprotocol/sdk": "^1.25.1",
     "@types/figlet": "^1.7.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",

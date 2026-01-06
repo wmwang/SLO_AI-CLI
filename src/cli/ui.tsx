@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { Box, Text } from 'ink';
 import Welcome from './components/Welcome.js';
 import PathInput from './components/PathInput.js';
-import SLOSelector from './components/SLOSelector.js';
+import SLOReviewer from './components/SLOReviewer.js';
 import MetricInput from './components/MetricInput.js';
 import Status from './components/Status.js';
 import ResultView from './components/ResultView.js';
 import LogViewer from './components/LogViewer.js';
+import MetricDiscoveryInput from './components/MetricDiscoveryInput.js';
+import MetricReviewer from './components/MetricReviewer.js';
 import { SLO } from '../agent/state.js';
-import { recommendationGraph, generationGraph, optimizationGraph } from '../agent/graph.js';
+import { recommendationGraph, generationGraph, optimizationGraph, refinementGraph, discoveryGraph, metricRecommendationGraph, quickDashboardGraph } from '../agent/graph.js';
 import fs from 'fs-extra';
 import path from 'path';
 import { stateManager } from '../agent/state_manager.js';
@@ -21,12 +23,17 @@ export type ViewState =
     | 'GENERATING_ARTIFACTS'
     | 'INPUT_METRICS' // For Optimization Mode
     | 'OPTIMIZING'   // For Optimization Mode
+    | 'INPUT_DISCOVERY' // For Quick Observability
+    | 'DISCOVERING_METRICS' // For Quick Observability
+    | 'REVIEWING_METRICS' // For Quick Observability
+    | 'RECOMMENDING_METRICS' // For Quick Observability
+    | 'GENERATING_DASHBOARD' // For Quick Observability
     | 'SHOW_RESULT'
     | 'ERROR';
 
 const App = () => {
     const [view, setView] = useState<ViewState>('WELCOME');
-    const [mode, setMode] = useState<'NEW' | 'OPTIMIZE'>('NEW');
+    const [mode, setMode] = useState<'NEW' | 'OPTIMIZE' | 'QUICK'>('NEW');
     const [error, setError] = useState<string | null>(null);
 
     // Data State
@@ -34,6 +41,7 @@ const App = () => {
     const [recommendedSLOs, setRecommendedSLOs] = useState<SLO[]>([]);
     const [selectedSLOs, setSelectedSLOs] = useState<SLO[]>([]);
     const [metricsData, setMetricsData] = useState<string>("");
+    const [isRefining, setIsRefining] = useState<boolean>(false);
 
     // Results
     const [generatedRules, setGeneratedRules] = useState<string>("");
@@ -41,10 +49,20 @@ const App = () => {
     const [optimizationReport, setOptimizationReport] = useState<string>("");
     const [hasLoadedMemory, setHasLoadedMemory] = useState<boolean>(false);
 
-    const handleModeSelect = (selectedMode: 'NEW' | 'OPTIMIZE') => {
+    // Quick Observability State
+    const [appName, setAppName] = useState<string>("");
+    const [namespace, setNamespace] = useState<string>("");
+    const [discoveredMetrics, setDiscoveredMetrics] = useState<string[]>([]);
+    const [recommendedMetrics, setRecommendedMetrics] = useState<string[]>([]);
+    const [showMetricRecommendations, setShowMetricRecommendations] = useState<boolean>(false);
+    const [quickDashboard, setQuickDashboard] = useState<string>("");
+
+    const handleModeSelect = (selectedMode: 'NEW' | 'OPTIMIZE' | 'QUICK') => {
         setMode(selectedMode);
         if (selectedMode === 'NEW') {
             setView('INPUT_PATH');
+        } else if (selectedMode === 'QUICK') {
+            setView('INPUT_DISCOVERY');
         } else {
             // Check for memory
             checkMemoryAndSwitch();
@@ -150,6 +168,94 @@ const App = () => {
         }
     }
 
+    const handleRefinement = async (feedback: string) => {
+        setIsRefining(true);
+        try {
+            const result = await refinementGraph.invoke({
+                recommendedSLOs: recommendedSLOs,
+                metricsData: feedback
+            });
+
+            if (result.recommendedSLOs) {
+                setRecommendedSLOs(result.recommendedSLOs);
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsRefining(false);
+        }
+    };
+
+    // Quick Observability Handlers
+    const handleDiscoverySubmit = async (app: string, ns: string) => {
+        setAppName(app);
+        setNamespace(ns);
+        setView('DISCOVERING_METRICS');
+
+        try {
+            const result = await discoveryGraph.invoke({
+                appName: app,
+                namespace: ns
+            });
+
+            if (result.discoveredMetrics) {
+                setDiscoveredMetrics(result.discoveredMetrics);
+                setView('REVIEWING_METRICS');
+            }
+        } catch (err: any) {
+            setError(err.message);
+            setView('ERROR');
+        }
+    };
+
+    const handleGoalSubmit = async (goal: string) => {
+        setView('RECOMMENDING_METRICS');
+
+        try {
+            const result = await metricRecommendationGraph.invoke({
+                discoveredMetrics: discoveredMetrics,
+                userObservabilityGoal: goal
+            });
+
+            if (result.recommendedMetrics) {
+                setRecommendedMetrics(result.recommendedMetrics);
+                setShowMetricRecommendations(true);
+                setView('REVIEWING_METRICS');
+            }
+        } catch (err: any) {
+            setError(err.message);
+            setView('ERROR');
+        }
+    };
+
+    const handleDashboardGeneration = async () => {
+        setView('GENERATING_DASHBOARD');
+
+        try {
+            const result = await quickDashboardGraph.invoke({
+                appName: appName,
+                namespace: namespace,
+                recommendedMetrics: recommendedMetrics,
+                metricsData: "" // Will be populated by node
+            });
+
+            if (result.quickDashboard) {
+                setQuickDashboard(result.quickDashboard);
+
+                // Save dashboard to file
+                const outputDir = path.join(process.cwd(), 'output');
+                await fs.ensureDir(outputDir);
+                const dashboardPath = path.join(outputDir, 'quick_dashboard.json');
+                await fs.writeFile(dashboardPath, result.quickDashboard);
+
+                setView('SHOW_RESULT');
+            }
+        } catch (err: any) {
+            setError(err.message);
+            setView('ERROR');
+        }
+    };
+
     return (
         <Box flexDirection="column" padding={1}>
             {view !== 'WELCOME' && (
@@ -163,16 +269,31 @@ const App = () => {
             {view === 'INPUT_METRICS' && <MetricInput onSubmit={handleMetricSubmit} hasMemory={hasLoadedMemory} />}
 
             {view === 'ANALYZING' && <Status message="Analyzing K8s Manifests with AI..." spinner="dots" />}
-            {view === 'SELECTING_SLOS' && <SLOSelector items={recommendedSLOs} onSubmit={handleSLOSelection} />}
+            {view === 'SELECTING_SLOS' && <SLOReviewer items={recommendedSLOs} onConfirm={handleSLOSelection} onRefine={handleRefinement} isRefining={isRefining} />}
 
             {view === 'GENERATING_ARTIFACTS' && <Status message="Generating Prometheus Rules & Grafana Dashboard..." spinner="dots" />}
             {view === 'OPTIMIZING' && <Status message="Analyzing Metrics & Optimizing SLOs..." spinner="dots" />}
+
+            {/* Quick Observability Views */}
+            {view === 'INPUT_DISCOVERY' && <MetricDiscoveryInput onSubmit={handleDiscoverySubmit} />}
+            {view === 'DISCOVERING_METRICS' && <Status message="Discovering metrics from Prometheus..." spinner="dots" />}
+            {view === 'REVIEWING_METRICS' && (
+                <MetricReviewer
+                    discoveredMetrics={discoveredMetrics}
+                    recommendedMetrics={recommendedMetrics}
+                    onGoalSubmit={handleGoalSubmit}
+                    onConfirm={handleDashboardGeneration}
+                    showRecommendations={showMetricRecommendations}
+                />
+            )}
+            {view === 'RECOMMENDING_METRICS' && <Status message="AI is selecting relevant metrics..." spinner="dots" />}
+            {view === 'GENERATING_DASHBOARD' && <Status message="Generating Grafana Dashboard..." spinner="dots" />}
 
             {view === 'SHOW_RESULT' && (
                 <ResultView
                     mode={mode}
                     rulesPath="./output/prometheus_rules.yaml"
-                    dashboardPath="./output/dashboard.json"
+                    dashboardPath={mode === 'QUICK' ? './output/quick_dashboard.json' : './output/dashboard.json'}
                     report={optimizationReport}
                     selectedSLOs={selectedSLOs}
                 />

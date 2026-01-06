@@ -1,0 +1,86 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "dbaws-dashboard",
+    "title": "DBAWS Metrics Dashboard",
+    "tags": [],
+    "timezone": "browser",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "HTTP Request Duration (Seconds)",
+        "description": "This panel displays the duration of HTTP requests in seconds over time.",
+        "targets": [
+          {
+            "expr": "http_request_duration_seconds",
+            "legendFormat": "{{method}} {{route}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 6
+        }
+      },
+      {
+        "type": "graph",
+        "title": "gRPC Server Handling Duration (Seconds)",
+        "description": "This panel shows the duration of gRPC server handling in seconds over time.",
+        "targets": [
+          {
+            "expr": "grpc_server_handling_seconds",
+            "legendFormat": "{{method}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "x": 0,
+          "y": 6,
+          "w": 12,
+          "h": 6
+        }
+      },
+      {
+        "type": "graph",
+        "title": "Database Query Duration (Seconds)",
+        "description": "This panel visualizes the duration of database queries in seconds over time.",
+        "targets": [
+          {
+            "expr": "database_query_duration_seconds",
+            "legendFormat": "{{query}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "x": 0,
+          "y": 12,
+          "w": 12,
+          "h": 6
+        }
+      },
+      {
+        "type": "gauge",
+        "title": "Total CPU Time (Seconds)",
+        "description": "This panel shows the total CPU time used by the process in seconds.",
+        "targets": [
+          {
+            "expr": "process_cpu_seconds_total",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "x": 0,
+          "y": 18,
+          "w": 12,
+          "h": 6
+        }
+      }
+    ],
+    "schemaVersion": 26,
+    "version": 1,
+    "refresh": "5s"
+  },
+  "overwrite": true
+}

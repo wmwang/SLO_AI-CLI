@@ -144,3 +144,110 @@ Metrics Data / Context:
 {metrics_data}
 </task>`)
 ]);
+
+export const SLO_REFINEMENT_PROMPT = ChatPromptTemplate.fromMessages([
+  SystemMessagePromptTemplate.fromTemplate(`You are an expert SRE helping a user refine their Service Level Objectives (SLOs).
+Your goal is to interpret the user's feedback in natural language and update the list of SLOs accordingly.
+
+You will receive:
+1. The Current List of SLOs (JSON).
+2. The User's Feedback (Natural Language).
+
+You must:
+1. Understand the user's intent. Common intents:
+   - "Delete/Remove": Remove specific SLOs (e.g., "remove traffic SLOs").
+   - "Modify/Update": Change targets, windows, or descriptions (e.g., "change all availability targets to 99.5%").
+   - "Filter/Select": Keep only specific ones (e.g., "only keep latency SLOs").
+   - "Add": (Less common, but possible) Add a new standard SLO.
+   - "Explain": If the user asks a question instead of changing something, you should still return the list unchanged but maybe update the description if relevant, or just rely on the UI to handle it. (Actually, for now, just output the list).
+
+2. Output the **Complete Updated List** of SLOs in valid JSON format.
+   - If the user says "remove X", the output list should NOT contain X.
+   - If the user says "change target to Y", the output list should have Y.
+   - **CRITICAL**: Maintain the original structure of the SLO objects. Do NOT remove fields like 'id', 'promql_indicator', etc., unless the whole object is removed.
+
+Perfrom field normalization if needed:
+- 'target' must be a number (0-100).
+
+Output strictly in JSON format. The output MUST be a valid JSON object with a single key "slos" containing the array of SLO objects.
+Example:
+{{
+  "slos": [
+    {{ "id": "...", "name": "...", "target": 99.5, ... }}
+  ]
+}}`),
+  HumanMessagePromptTemplate.fromTemplate(`<task>
+Current SLOs:
+{current_slos}
+
+User Feedback:
+{user_feedback}
+</task>`)
+]);
+
+export const METRIC_RECOMMENDATION_PROMPT = ChatPromptTemplate.fromMessages([
+  SystemMessagePromptTemplate.fromTemplate(`You are an expert SRE helping select the most relevant Prometheus metrics for observability.
+
+You will receive:
+1. A list of available Prometheus metrics (metric names)
+2. The user's observability goal (what they want to monitor)
+
+Your task:
+1. Analyze the available metrics
+2. Select 3-4 most relevant metrics based on the user's goal
+3. For each selected metric, provide:
+   - Metric name
+   - Purpose (why this metric is useful for the user's goal)
+   - Visualization type (graph, gauge, counter, etc.)
+
+Output Format (JSON):
+{{
+  "recommended_metrics": [
+    {{
+      "name": "http_request_duration_seconds",
+      "purpose": "Tracks request latency to identify performance issues",
+      "viz_type": "graph"
+    }}
+  ]
+}}
+
+CRITICAL: Output ONLY valid JSON. No markdown, no explanations.`),
+  HumanMessagePromptTemplate.fromTemplate(`<task>
+Available Metrics:
+{available_metrics}
+
+User's Observability Goal:
+{user_goal}
+</task>`)
+]);
+
+export const QUICK_DASHBOARD_PROMPT = ChatPromptTemplate.fromMessages([
+  SystemMessagePromptTemplate.fromTemplate(`You are an expert in Grafana dashboard creation.
+
+You will receive a list of selected Prometheus metrics with their purposes.
+
+Your task:
+Generate a complete Grafana Dashboard JSON that includes:
+1. A panel for each metric
+2. Appropriate visualization type (graph for histograms/counters, gauge for gauges, etc.)
+3. Proper PromQL queries
+4. Meaningful titles and descriptions
+
+The dashboard should be ready to import into Grafana without modification.
+
+Output Format: Valid Grafana Dashboard JSON (version 8.0+)
+
+CRITICAL RULES:
+- Use 'graph' panel type for time-series data
+- Use 'gauge' panel type for current values
+- Include proper 'targets' with PromQL queries
+- Set appropriate 'gridPos' for layout
+- Output ONLY valid JSON, no markdown blocks`),
+  HumanMessagePromptTemplate.fromTemplate(`<task>
+App Name: {app_name}
+Namespace: {namespace}
+
+Selected Metrics:
+{selected_metrics}
+</task>`)
+]);

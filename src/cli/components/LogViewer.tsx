@@ -16,11 +16,24 @@ const LogViewer: React.FC = () => {
         const handleLog = (log: LogEntry) => {
             // If we were streaming, flush it to logs first
             setStreamingContent(null);
-            setLogs((prev) => [...prev.slice(-4), log]); // Keep last 5 logs mainly
+            // Limit message length in history to avoid huge blocks
+            const truncatedLog = {
+                ...log,
+                message: log.message.length > 200 ? log.message.substring(0, 200) + '... (truncated)' : log.message
+            };
+            setLogs((prev) => [...prev.slice(-4), truncatedLog]); // Keep last 5 logs mainly
         };
 
         const handleStream = (token: string) => {
-            setStreamingContent((prev) => (prev || '') + token);
+            setStreamingContent((prev) => {
+                const newContent = (prev || '') + token;
+                // Only keep the tail of the stream to prevent UI explosion
+                // Show last 150 chars roughly
+                if (newContent.length > 150) {
+                    return '...' + newContent.slice(-150);
+                }
+                return newContent;
+            });
         };
 
         logger.on('log', handleLog);
@@ -33,21 +46,21 @@ const LogViewer: React.FC = () => {
     }, []);
 
     return (
-        <Box flexDirection="column" borderStyle="single" borderColor="gray" paddingX={1} marginTop={1}>
-            <Text bold>Live Agent Logs:</Text>
+        <Box flexDirection="column" borderStyle="single" borderColor="gray" paddingX={1} marginTop={1} height={8}>
+            <Text bold>Live Agent Logs (Tail):</Text>
             {logs.map((log, index) => (
-                <Box key={index}>
+                <Box key={index} height={1} overflow="hidden">
                     <Text color="gray">[{new Date(log.timestamp).toLocaleTimeString()}] </Text>
-                    <Text color={log.type === 'ai' ? 'magenta' : log.type === 'error' ? 'red' : 'white'}>
+                    <Text color={log.type === 'ai' ? 'magenta' : log.type === 'error' ? 'red' : 'white'} wrap="truncate">
                         {log.type === 'ai' ? '🤖 ' : ''}{log.message}
                     </Text>
                 </Box>
             ))}
             {/* Streaming Section */}
             {streamingContent && (
-                <Box>
+                <Box height={1} overflow="hidden">
                     <Text color="gray">[{new Date().toLocaleTimeString()}] </Text>
-                    <Text color="magenta">🤖 {streamingContent}█</Text>
+                    <Text color="magenta" wrap="truncate">🤖 {streamingContent}█</Text>
                 </Box>
             )}
 
