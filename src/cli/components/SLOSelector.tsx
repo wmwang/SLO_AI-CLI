@@ -24,10 +24,10 @@ const SLOSelector: React.FC<SLOSelectorProps> = ({ items, onSubmit }) => {
     const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set(items.map((_, i) => i)));
 
     useInput((input: string, key: any) => {
-        if (key.upArrow) {
+        if (key.upArrow || input === 'k' || input === 'w') {
             setCursor(Math.max(0, cursor - 1));
         }
-        if (key.downArrow) {
+        if (key.downArrow || input === 'j' || input === 's') {
             setCursor(Math.min(items.length - 1, cursor + 1));
         }
         if (input === ' ') {
@@ -47,7 +47,7 @@ const SLOSelector: React.FC<SLOSelectorProps> = ({ items, onSubmit }) => {
 
     return (
         <Box flexDirection="column">
-            <Text bold color="green">Select SLOs to Implement (Space to toggle, Enter to confirm):</Text>
+            <Text bold color="green">Select SLOs to Implement (↑/↓ or k/j to move, Space to toggle, Enter to confirm):</Text>
             <Box flexDirection="column" marginTop={1} marginBottom={1}>
                 {items.map((item, index) => {
                     const isSelected = selectedIndices.has(index);
