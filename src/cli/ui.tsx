@@ -268,11 +268,11 @@ const App = () => {
             {view === 'INPUT_PATH' && <PathInput onSubmit={handlePathSubmit} />}
             {view === 'INPUT_METRICS' && <MetricInput onSubmit={handleMetricSubmit} hasMemory={hasLoadedMemory} />}
 
-            {view === 'ANALYZING' && <Status message="Analyzing K8s Manifests with AI..." spinner="dots" />}
+            {view === 'ANALYZING' && <Status message="Analyzing K8s Manifests with AI..." isAI={true} />}
             {view === 'SELECTING_SLOS' && <SLOReviewer items={recommendedSLOs} onConfirm={handleSLOSelection} onRefine={handleRefinement} isRefining={isRefining} />}
 
-            {view === 'GENERATING_ARTIFACTS' && <Status message="Generating Prometheus Rules & Grafana Dashboard..." spinner="dots" />}
-            {view === 'OPTIMIZING' && <Status message="Analyzing Metrics & Optimizing SLOs..." spinner="dots" />}
+            {view === 'GENERATING_ARTIFACTS' && <Status message="Generating Prometheus Rules & Grafana Dashboard..." isAI={true} />}
+            {view === 'OPTIMIZING' && <Status message="Analyzing Metrics & Optimizing SLOs..." isAI={true} />}
 
             {/* Quick Observability Views */}
             {view === 'INPUT_DISCOVERY' && <MetricDiscoveryInput onSubmit={handleDiscoverySubmit} />}
@@ -286,8 +286,8 @@ const App = () => {
                     showRecommendations={showMetricRecommendations}
                 />
             )}
-            {view === 'RECOMMENDING_METRICS' && <Status message="AI is selecting relevant metrics..." spinner="dots" />}
-            {view === 'GENERATING_DASHBOARD' && <Status message="Generating Grafana Dashboard..." spinner="dots" />}
+            {view === 'RECOMMENDING_METRICS' && <Status message="AI is selecting relevant metrics..." isAI={true} />}
+            {view === 'GENERATING_DASHBOARD' && <Status message="Generating Grafana Dashboard..." isAI={true} />}
 
             {view === 'SHOW_RESULT' && (
                 <ResultView

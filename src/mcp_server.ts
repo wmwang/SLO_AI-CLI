@@ -12,7 +12,10 @@ import {
     recommendSLOsNode,
     generateArtifactsNode,
     optimizeSLOsNode,
-    refineSLOsNode
+    refineSLOsNode,
+    discoverMetricsNode,
+    recommendMetricsNode,
+    generateQuickDashboardNode
 } from "./agent/nodes.js";
 import { SLO } from "./agent/state.js";
 
@@ -108,6 +111,68 @@ class SLOAgentServer {
                                 }
                             },
                             required: ["metrics_data"],
+                        },
+                    },
+                    {
+                        name: "discover_prometheus_metrics",
+                        description: "Discover existing Prometheus metrics for an application. Supports both real Prometheus and mock mode.",
+                        inputSchema: {
+                            type: "object",
+                            properties: {
+                                app_name: {
+                                    type: "string",
+                                    description: "Application name to discover metrics for.",
+                                },
+                                namespace: {
+                                    type: "string",
+                                    description: "Kubernetes namespace.",
+                                },
+                                prometheus_url: {
+                                    type: "string",
+                                    description: "Optional Prometheus URL. If not provided, uses mock data.",
+                                }
+                            },
+                            required: ["app_name", "namespace"],
+                        },
+                    },
+                    {
+                        name: "recommend_key_metrics",
+                        description: "Recommend 3-4 key metrics based on user's observability goals from discovered metrics.",
+                        inputSchema: {
+                            type: "object",
+                            properties: {
+                                discovered_metrics: {
+                                    type: "string",
+                                    description: "JSON array of discovered metric names.",
+                                },
+                                observability_goal: {
+                                    type: "string",
+                                    description: "User's observability goal in natural language (e.g., 'latency and errors', 'resource usage').",
+                                }
+                            },
+                            required: ["discovered_metrics", "observability_goal"],
+                        },
+                    },
+                    {
+                        name: "generate_quick_dashboard",
+                        description: "Generate a Grafana Dashboard JSON from recommended metrics for quick observability.",
+                        inputSchema: {
+                            type: "object",
+                            properties: {
+                                recommended_metrics: {
+                                    type: "string",
+                                    description: "JSON string of recommended metrics with their details.",
+                                },
+                                app_name: {
+                                    type: "string",
+                                    description: "Application name for dashboard title.",
+                                },
+                                namespace: {
+                                    type: "string",
+                                    description: "Kubernetes namespace.",
+                                }
+                            },
+                            required: ["recommended_metrics", "app_name", "namespace"],
                         },
                     },
                 ],
@@ -210,6 +275,94 @@ class SLOAgentServer {
                                     text: result.optimizationReport || "No report generated."
                                 }
                             ]
+                        };
+                    }
+
+                    case "discover_prometheus_metrics": {
+                        const appName = String(request.params.arguments?.app_name);
+                        const namespace = String(request.params.arguments?.namespace);
+
+                        const mockState: any = {
+                            appName,
+                            namespace,
+                            discoveredMetrics: []
+                        };
+
+                        const result = await discoverMetricsNode(mockState);
+
+                        return {
+                            content: [
+                                {
+                                    type: "text",
+                                    text: JSON.stringify({
+                                        discoveredMetrics: result.discoveredMetrics
+                                    }, null, 2),
+                                },
+                            ],
+                        };
+                    }
+
+                    case "recommend_key_metrics": {
+                        const discoveredMetricsJson = String(request.params.arguments?.discovered_metrics);
+                        const observabilityGoal = String(request.params.arguments?.observability_goal);
+
+                        let discoveredMetrics: string[] = [];
+                        try {
+                            discoveredMetrics = JSON.parse(discoveredMetricsJson);
+                        } catch (e) {
+                            throw new McpError(ErrorCode.InvalidParams, "Invalid JSON for 'discovered_metrics'");
+                        }
+
+                        const mockState: any = {
+                            discoveredMetrics,
+                            userObservabilityGoal: observabilityGoal,
+                            recommendedMetrics: []
+                        };
+
+                        const result = await recommendMetricsNode(mockState);
+
+                        return {
+                            content: [
+                                {
+                                    type: "text",
+                                    text: JSON.stringify({
+                                        recommendedMetrics: result.recommendedMetrics
+                                    }, null, 2),
+                                },
+                            ],
+                        };
+                    }
+
+                    case "generate_quick_dashboard": {
+                        const recommendedMetricsJson = String(request.params.arguments?.recommended_metrics);
+                        const appName = String(request.params.arguments?.app_name);
+                        const namespace = String(request.params.arguments?.namespace);
+
+                        let recommendedMetrics: any[] = [];
+                        try {
+                            recommendedMetrics = JSON.parse(recommendedMetricsJson);
+                        } catch (e) {
+                            throw new McpError(ErrorCode.InvalidParams, "Invalid JSON for 'recommended_metrics'");
+                        }
+
+                        const mockState: any = {
+                            appName,
+                            namespace,
+                            recommendedMetrics,
+                            quickDashboard: null
+                        };
+
+                        const result = await generateQuickDashboardNode(mockState);
+
+                        return {
+                            content: [
+                                {
+                                    type: "text",
+                                    text: JSON.stringify({
+                                        dashboard: result.quickDashboard
+                                    }, null, 2),
+                                },
+                            ],
                         };
                     }
 

@@ -58,10 +58,16 @@ const ResultView: React.FC<ResultViewProps> = ({ mode, rulesPath, dashboardPath,
                     </Box>
 
                     <Box marginTop={1}>
-                        <Text bold>3. Verify Data:</Text>
+                        <Text bold>3. (Optional) Use Sloth for Advanced SLO Management:</Text>
                     </Box>
-                    <Box marginLeft={2}>
-                        <Text>   Wait for a few minutes, then check if data appearing in the dashboard.</Text>
+                    <Box marginLeft={2} flexDirection="column">
+                        <Text color="gray">Sloth generates multi-window, multi-burn-rate alerts:</Text>
+                        <Text color="white">   sloth generate -i ./output/sloth.yaml -o ./output/prometheus_sloth_rules.yaml</Text>
+                        <Text color="gray">Then apply the generated rules to Prometheus.</Text>
+                    </Box>
+
+                    <Box marginTop={1}>
+                        <Text bold>4. Verify Data:</Text>
                     </Box>
                     <Box marginLeft={2}>
                         <Text>   Wait for a few minutes, then check if data appearing in the dashboard.</Text>

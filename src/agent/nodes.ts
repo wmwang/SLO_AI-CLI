@@ -8,7 +8,7 @@ import { SlothRunner } from "../services/sloth_runner.js";
 import * as fs from "fs";
 import * as path from "path";
 
-dotenv.config();
+dotenv.config({ debug: false });
 
 const model = new ChatOpenAI({
     modelName: process.env.OPENAI_MODEL_NAME || "gpt-4o-mini",
@@ -56,6 +56,10 @@ export const recommendSLOsNode = async (state: typeof AgentState.State) => {
         temperature: 0
     };
     logger.log(`Complete API Payload`, "info", apiPayload);
+
+    // Log prompt summary for CLI visibility
+    const totalPromptChars = messages.reduce((sum, msg) => sum + String(msg.content).length, 0);
+    logger.log(`📤 Sending prompt to LLM (${totalPromptChars} chars)...`, "ai");
 
     const stream = await chain.stream({
         k8s_manifests: state.k8sManifests,
@@ -155,6 +159,10 @@ export const generateArtifactsNode = async (state: typeof AgentState.State) => {
             // Append error instruction to the input data so the LLM sees it
             promptInput.selected_slos += `\n\n[IMPORTANT] PREVIOUS GENERATION FAILED WITH SLOTH ERROR:\n${lastError}\n\nPLEASE FIX THE YAML TO RESOLVE THIS ERROR.\nHint 1: If the error is 'both error and total queries can't be the same', you MUST either change the 'error_query' to be different or switch to 'raw' SLI type.\nHint 2: If the error is 'template must contain the {{ .window }} variable', it means your PromQL missing the window parameter. For Gauge metrics (like memory/saturation), wraps the metric in 'max_over_time(...[{{ .window }}])' or 'avg_over_time(...[{{ .window }}])'.`;
         }
+
+        // Log prompt summary
+        const promptChars = JSON.stringify(promptInput).length;
+        logger.log(`📤 Sending generation prompt to LLM (${promptChars} chars)...`, "ai");
 
         const stream = await chain.stream(promptInput);
 
@@ -294,6 +302,10 @@ export const refineSLOsNode = async (state: typeof AgentState.State) => {
         messages: promptInput,
         temperature: 0
     }, null, 2));
+
+    // Log prompt summary
+    const feedbackLength = feedback.length;
+    logger.log(`📤 Sending refinement request to LLM (feedback: ${feedbackLength} chars)...`, "ai");
 
     const stream = await model.stream(promptInput);
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Text } from 'ink';
 import { logger } from '../../utils/logger.js';
 
@@ -8,32 +8,51 @@ interface LogEntry {
     timestamp: Date;
 }
 
+// Marquee component for scrolling text
+const MarqueeText: React.FC<{ text: string; color: string; maxWidth: number }> = ({ text, color, maxWidth }) => {
+    const [offset, setOffset] = useState(0);
+    const shouldScroll = text.length > maxWidth;
+
+    useEffect(() => {
+        if (!shouldScroll) return;
+
+        const interval = setInterval(() => {
+            setOffset((prev) => {
+                const next = prev + 1;
+                // Reset when we've scrolled past the text
+                return next > text.length ? 0 : next;
+            });
+        }, 200); // Scroll speed: 200ms per character
+
+        return () => clearInterval(interval);
+    }, [text, shouldScroll]);
+
+    if (!shouldScroll) {
+        return <Text color={color}>{text}</Text>;
+    }
+
+    // Create scrolling effect by cycling through the text
+    const displayText = text.substring(offset, offset + maxWidth);
+    const paddedText = displayText.length < maxWidth
+        ? displayText + ' '.repeat(maxWidth - displayText.length)
+        : displayText;
+
+    return <Text color={color}>{paddedText}</Text>;
+};
+
 const LogViewer: React.FC = () => {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [streamingContent, setStreamingContent] = useState<string | null>(null);
+    const maxLogWidth = 100; // Approximate max width for log messages
 
     useEffect(() => {
         const handleLog = (log: LogEntry) => {
-            // If we were streaming, flush it to logs first
             setStreamingContent(null);
-            // Limit message length in history to avoid huge blocks
-            const truncatedLog = {
-                ...log,
-                message: log.message.length > 200 ? log.message.substring(0, 200) + '... (truncated)' : log.message
-            };
-            setLogs((prev) => [...prev.slice(-4), truncatedLog]); // Keep last 5 logs mainly
+            setLogs((prev) => [...prev.slice(-4), log]); // Keep last 5 logs
         };
 
         const handleStream = (token: string) => {
-            setStreamingContent((prev) => {
-                const newContent = (prev || '') + token;
-                // Only keep the tail of the stream to prevent UI explosion
-                // Show last 150 chars roughly
-                if (newContent.length > 150) {
-                    return '...' + newContent.slice(-150);
-                }
-                return newContent;
-            });
+            setStreamingContent((prev) => (prev || '') + token);
         };
 
         logger.on('log', handleLog);
@@ -48,19 +67,29 @@ const LogViewer: React.FC = () => {
     return (
         <Box flexDirection="column" borderStyle="single" borderColor="gray" paddingX={1} marginTop={1} height={8}>
             <Text bold>Live Agent Logs (Tail):</Text>
-            {logs.map((log, index) => (
-                <Box key={index} height={1} overflow="hidden">
-                    <Text color="gray">[{new Date(log.timestamp).toLocaleTimeString()}] </Text>
-                    <Text color={log.type === 'ai' ? 'magenta' : log.type === 'error' ? 'red' : 'white'} wrap="truncate">
-                        {log.type === 'ai' ? '🤖 ' : ''}{log.message}
-                    </Text>
-                </Box>
-            ))}
+            {logs.map((log, index) => {
+                const prefix = `[${new Date(log.timestamp).toLocaleTimeString()}] ${log.type === 'ai' ? '🤖 ' : ''}`;
+                const fullMessage = prefix + log.message;
+                const messageColor = log.type === 'ai' ? 'magenta' : log.type === 'error' ? 'red' : 'white';
+
+                return (
+                    <Box key={index} height={1} overflow="hidden">
+                        <MarqueeText
+                            text={fullMessage}
+                            color={messageColor}
+                            maxWidth={maxLogWidth}
+                        />
+                    </Box>
+                );
+            })}
             {/* Streaming Section */}
             {streamingContent && (
                 <Box height={1} overflow="hidden">
-                    <Text color="gray">[{new Date().toLocaleTimeString()}] </Text>
-                    <Text color="magenta" wrap="truncate">🤖 {streamingContent}█</Text>
+                    <MarqueeText
+                        text={`[${new Date().toLocaleTimeString()}] 🤖 ${streamingContent}█`}
+                        color="magenta"
+                        maxWidth={maxLogWidth}
+                    />
                 </Box>
             )}
 

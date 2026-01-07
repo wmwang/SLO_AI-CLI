@@ -57,6 +57,17 @@ const SLOReviewer: React.FC<SLOReviewerProps> = ({ items, onConfirm, onRefine, i
                                 <Box marginLeft={2}>
                                     <Text color="gray" dimColor>{item.description}</Text>
                                 </Box>
+                                {item.description_zh && (
+                                    <Box marginLeft={2} marginTop={1}>
+                                        <Text color="cyan">💡 </Text>
+                                        <TypewriterText
+                                            text={item.description_zh}
+                                            speed={30}
+                                            color="cyan"
+                                            delay={index * 100}
+                                        />
+                                    </Box>
+                                )}
                             </Box>
                         );
                     })
