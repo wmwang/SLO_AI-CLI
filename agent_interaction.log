@@ -2873,3 +2873,83 @@ DETAILS:
 --- New Session Started: 2026-01-08T13:15:15.253Z ---
 
 --- New Session Started: 2026-01-08T13:15:31.560Z ---
+
+--- New Session Started: 2026-01-08T13:57:44.305Z ---
+[2026-01-08T13:57:54.090Z] [INFO] Discovering metrics for app="dbaws", namespace="dbaws"
+----------------------------------------
+[2026-01-08T13:57:54.122Z] [AI] Discovered 18 metrics
+DETAILS:
+{
+  "metrics": [
+    "http_requests_total",
+    "http_request_duration_seconds",
+    "http_request_size_bytes",
+    "http_response_size_bytes",
+    "process_cpu_seconds_total",
+    "process_resident_memory_bytes",
+    "process_open_fds",
+    "go_goroutines",
+    "go_memstats_alloc_bytes",
+    "grpc_server_handled_total",
+    "grpc_server_handling_seconds",
+    "database_queries_total",
+    "database_query_duration_seconds",
+    "cache_hits_total",
+    "cache_misses_total",
+    "queue_depth",
+    "active_connections",
+    "error_total"
+  ]
+}
+----------------------------------------
+
+--- New Session Started: 2026-01-08T14:01:43.155Z ---
+[2026-01-08T14:01:50.351Z] [INFO] Discovering metrics for app="dbaws", namespace="dbaws"
+----------------------------------------
+[2026-01-08T14:01:50.352Z] [INFO] 🔍 Querying Prometheus...
+----------------------------------------
+[2026-01-08T14:01:50.352Z] [INFO]   URL: http://localhost:9090/api/v1/series?match[]={app="dbaws",namespace="dbaws"}
+----------------------------------------
+[2026-01-08T14:01:50.352Z] [INFO]   Headers:
+DETAILS:
+{
+  "Content-Type": "application/json"
+}
+----------------------------------------
+[2026-01-08T14:01:50.368Z] [ERROR] ❌ Failed to query Prometheus:
+----------------------------------------
+[2026-01-08T14:01:50.368Z] [ERROR]   Error: fetch failed
+----------------------------------------
+[2026-01-08T14:01:50.368Z] [ERROR]   Cause: AggregateError
+----------------------------------------
+[2026-01-08T14:01:50.369Z] [ERROR]   Stack: TypeError: fetch failed
+    at node:internal/deps/undici/undici:15845:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+----------------------------------------
+[2026-01-08T14:01:50.369Z] [INFO] ⚠️  Falling back to mock data
+----------------------------------------
+[2026-01-08T14:01:50.369Z] [AI] Discovered 18 metrics
+DETAILS:
+{
+  "metrics": [
+    "http_requests_total",
+    "http_request_duration_seconds",
+    "http_request_size_bytes",
+    "http_response_size_bytes",
+    "process_cpu_seconds_total",
+    "process_resident_memory_bytes",
+    "process_open_fds",
+    "go_goroutines",
+    "go_memstats_alloc_bytes",
+    "grpc_server_handled_total",
+    "grpc_server_handling_seconds",
+    "database_queries_total",
+    "database_query_duration_seconds",
+    "cache_hits_total",
+    "cache_misses_total",
+    "queue_depth",
+    "active_connections",
+    "error_total"
+  ]
+}
+----------------------------------------

@@ -1,4 +1,5 @@
 import * as dotenv from "dotenv";
+import { logger } from "../utils/logger.js";
 
 dotenv.config();
 
@@ -91,7 +92,7 @@ export class PrometheusClient {
      */
     async discoverMetrics(appName: string, namespace: string): Promise<PrometheusMetric[]> {
         if (!this.prometheusUrl) {
-            console.log(`[PrometheusClient] No PROMETHEUS_URL configured, using mock data for app="${appName}", namespace="${namespace}"`);
+            logger.log(`No PROMETHEUS_URL configured, using mock data for app="${appName}", namespace="${namespace}"`, "info");
             return this.getMockMetrics(appName, namespace);
         }
 
@@ -99,15 +100,29 @@ export class PrometheusClient {
             // Query Prometheus API for metrics with specific labels
             // Example: /api/v1/series?match[]={app="my-app",namespace="production"}
             const url = `${this.prometheusUrl}/api/v1/series?match[]={app="${appName}",namespace="${namespace}"}`;
+            const headers = this.buildHeaders();
+
+            // Log request details (hide sensitive info)
+            logger.log(`🔍 Querying Prometheus...`, "info");
+            logger.log(`  URL: ${url}`, "info");
+            logger.log(`  Headers:`, "info", this.sanitizeHeadersForLog(headers));
 
             const response = await fetch(url, {
-                headers: this.buildHeaders(),
+                headers: headers,
             });
+
+            logger.log(`  Response Status: ${response.status} ${response.statusText}`, "info");
+
             if (!response.ok) {
-                throw new Error(`Prometheus API error: ${response.statusText}`);
+                const errorText = await response.text();
+                logger.log(`❌ Prometheus API error:`, "error");
+                logger.log(`  Status: ${response.status} ${response.statusText}`, "error");
+                logger.log(`  Response: ${errorText.substring(0, 500)}`, "error");
+                throw new Error(`Prometheus API error: ${response.status} ${response.statusText}`);
             }
 
             const data = await response.json();
+            logger.log(`  Response data status: ${data.status}`, "info");
 
             // Extract unique metric names from series
             const metricNames = new Set<string>();
@@ -117,6 +132,9 @@ export class PrometheusClient {
                         metricNames.add(series.__name__);
                     }
                 });
+                logger.log(`✅ Discovered ${metricNames.size} unique metrics`, "info");
+            } else {
+                logger.log(`⚠️  Unexpected response format`, "error", data);
             }
 
             // Convert to PrometheusMetric format
@@ -129,10 +147,44 @@ export class PrometheusClient {
             }));
 
         } catch (error: any) {
-            console.error(`[PrometheusClient] Failed to query Prometheus: ${error.message}`);
-            console.log("[PrometheusClient] Falling back to mock data");
+            logger.log(`❌ Failed to query Prometheus:`, "error");
+            logger.log(`  Error: ${error.message}`, "error");
+            if (error.cause) {
+                logger.log(`  Cause: ${error.cause}`, "error");
+            }
+            if (error.stack) {
+                logger.log(`  Stack: ${error.stack.split('\n').slice(0, 3).join('\n')}`, "error");
+            }
+            logger.log(`⚠️  Falling back to mock data`, "info");
             return this.getMockMetrics(appName, namespace);
         }
+    }
+
+    /**
+     * Sanitize headers for logging (hide sensitive information)
+     */
+    private sanitizeHeadersForLog(headers: HeadersInit): Record<string, string> {
+        const sanitized: Record<string, string> = {};
+        const headersObj = headers as Record<string, string>;
+
+        for (const [key, value] of Object.entries(headersObj)) {
+            if (key.toLowerCase() === 'authorization') {
+                // Show only the auth type, hide the actual token
+                const parts = value.split(' ');
+                if (parts.length === 2) {
+                    sanitized[key] = `${parts[0]} ***${parts[1].substring(parts[1].length - 8)}`;
+                } else {
+                    sanitized[key] = '***';
+                }
+            } else if (key.toLowerCase().includes('key') || key.toLowerCase().includes('token')) {
+                // Hide API keys and tokens
+                sanitized[key] = `***${value.substring(value.length - 4)}`;
+            } else {
+                sanitized[key] = value;
+            }
+        }
+
+        return sanitized;
     }
 
     /**
