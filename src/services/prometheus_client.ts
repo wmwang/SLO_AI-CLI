@@ -98,8 +98,9 @@ export class PrometheusClient {
 
         try {
             // Query Prometheus API for metrics with specific labels
-            // Example: /api/v1/series?match[]={app="my-app",namespace="production"}
-            const url = `${this.prometheusUrl}/api/v1/series?match[]={app="${appName}",namespace="${namespace}"}`;
+            // Using 'deployment' label instead of 'app' for better compatibility
+            // Example: /api/v1/series?match[]={deployment="my-service"}
+            const url = `${this.prometheusUrl}/api/v1/series?match[]={deployment="${appName}"}`;
             const headers = this.buildHeaders();
 
             // Log request details (hide sensitive info)
