@@ -66,8 +66,11 @@ class SLOAgentServer {
 
         this.setupToolHandlers();
 
-        // Error handling
-        this.server.onerror = (error) => console.error("[MCP Error]", error);
+        // Error handling - silently handle errors for MCP
+        // Errors will be reported through the MCP protocol
+        this.server.onerror = (error) => {
+            // Do NOT log to stderr - it will corrupt MCP stdio
+        };
         process.on('SIGINT', async () => {
             await this.server.close();
             process.exit(0);
@@ -402,7 +405,7 @@ class SLOAgentServer {
                         );
                 }
             } catch (error: any) {
-                console.error("Error executing tool:", error);
+                // Return error through MCP protocol, do NOT log to stderr
                 return {
                     content: [
                         {

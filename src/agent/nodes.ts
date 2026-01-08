@@ -1,3 +1,6 @@
+// Use hard-coded configuration from mcp_config.ts
+import { MCP_CONFIG } from "../config/mcp_config.js";
+
 import { ChatOpenAI } from "@langchain/openai";
 import { z } from "zod";
 import { SLO_RECOMMENDER_PROMPT, ARTIFACT_GENERATOR_PROMPT, SLO_OPTIMIZER_PROMPT, SLO_REFINEMENT_PROMPT } from "./prompts.js";
@@ -7,45 +10,13 @@ import { SlothRunner } from "../services/sloth_runner.js";
 import * as fs from "fs";
 import * as path from "path";
 
-// Manually load .env file to avoid dotenv's logging (critical for MCP)
-try {
-    const envPath = path.join(process.cwd(), '.env');
-    if (fs.existsSync(envPath)) {
-        const envContent = fs.readFileSync(envPath, 'utf-8');
-        envContent.split('\n').forEach(line => {
-            const trimmed = line.trim();
-            if (trimmed && !trimmed.startsWith('#')) {
-                const equalIndex = trimmed.indexOf('=');
-                if (equalIndex > 0) {
-                    const key = trimmed.substring(0, equalIndex).trim();
-                    const value = trimmed.substring(equalIndex + 1).trim();
-                    if (key && !process.env[key]) {
-                        process.env[key] = value;
-                    }
-                }
-            }
-        });
-    }
-} catch (error) {
-    // Silently fail - environment variables might be set elsewhere
-}
-
-// Validate required environment variables (silently for MCP compatibility)
-if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not set in .env file");
-}
-
-// Initialize ChatOpenAI with environment variables
-// This configuration works with:
-// 1. OpenAI official API
-// 2. Azure OpenAI
-// 3. Self-hosted LLM (vLLM, LM Studio, Ollama, etc.)
+// Initialize ChatOpenAI with configuration from mcp_config.ts
 const model = new ChatOpenAI({
-    modelName: process.env.OPENAI_MODEL_NAME || "gpt-4o-mini",
+    modelName: MCP_CONFIG.OPENAI_MODEL_NAME || "gpt-4o-mini",
     temperature: 0,
-    openAIApiKey: process.env.OPENAI_API_KEY,
+    openAIApiKey: MCP_CONFIG.OPENAI_API_KEY,
     configuration: {
-        baseURL: process.env.OPENAI_API_BASE || undefined,
+        baseURL: MCP_CONFIG.OPENAI_API_BASE || undefined,
     }
 });
 

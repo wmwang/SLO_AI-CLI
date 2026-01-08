@@ -1,5 +1,5 @@
-// Environment variables are loaded by nodes.ts or mcp_server.ts
-// No need to load dotenv here
+// Use hard-coded configuration from mcp_config.ts
+import { MCP_CONFIG } from "../config/mcp_config.js";
 import { logger } from "../utils/logger.js";
 
 export interface PrometheusMetric {
@@ -53,7 +53,7 @@ export class PrometheusClient {
                     }
                 });
             } catch (error) {
-                console.error('[PrometheusClient] Failed to parse PROMETHEUS_HEADERS:', error);
+                // Silently ignore parse errors
             }
         }
     }
