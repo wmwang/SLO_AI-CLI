@@ -2,7 +2,8 @@
 import * as dotenv from "dotenv";
 
 // Load environment variables FIRST before any other imports
-dotenv.config({ debug: false });
+// Use silent mode to avoid polluting stdio (critical for MCP communication)
+dotenv.config({ debug: false, override: false });
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";

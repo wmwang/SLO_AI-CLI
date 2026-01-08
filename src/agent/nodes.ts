@@ -8,7 +8,10 @@ import { SlothRunner } from "../services/sloth_runner.js";
 import * as fs from "fs";
 import * as path from "path";
 
-dotenv.config({ debug: false });
+dotenv.config({ debug: false, override: false });
+
+// Suppress dotenv output to avoid polluting stdio (important for MCP Server)
+// Dotenv sometimes outputs to stderr even with debug: false
 
 // Validate required environment variables
 if (!process.env.OPENAI_API_KEY) {

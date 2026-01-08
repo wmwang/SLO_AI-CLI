@@ -34,9 +34,55 @@ const MOCK_METRICS: PrometheusMetric[] = [
 
 export class PrometheusClient {
     private prometheusUrl: string | undefined;
+    private apiKey: string | undefined;
+    private customHeaders: Record<string, string> = {};
 
     constructor() {
         this.prometheusUrl = process.env.PROMETHEUS_URL;
+        this.apiKey = process.env.PROMETHEUS_API_KEY;
+
+        // Parse custom headers from environment variable
+        // Format: PROMETHEUS_HEADERS=Header1:Value1,Header2:Value2
+        if (process.env.PROMETHEUS_HEADERS) {
+            try {
+                const headerPairs = process.env.PROMETHEUS_HEADERS.split(',');
+                headerPairs.forEach(pair => {
+                    const [key, value] = pair.split(':').map(s => s.trim());
+                    if (key && value) {
+                        this.customHeaders[key] = value;
+                    }
+                });
+            } catch (error) {
+                console.error('[PrometheusClient] Failed to parse PROMETHEUS_HEADERS:', error);
+            }
+        }
+    }
+
+    /**
+     * Build headers for Prometheus API requests
+     */
+    private buildHeaders(): HeadersInit {
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+        };
+
+        // Add API Key if configured (common patterns)
+        if (this.apiKey) {
+            // Support multiple auth patterns
+            if (this.apiKey.startsWith('Bearer ')) {
+                headers['Authorization'] = this.apiKey;
+            } else if (this.apiKey.startsWith('Basic ')) {
+                headers['Authorization'] = this.apiKey;
+            } else {
+                // Default to Bearer token
+                headers['Authorization'] = `Bearer ${this.apiKey}`;
+            }
+        }
+
+        // Add custom headers (these can override the API key header if needed)
+        Object.assign(headers, this.customHeaders);
+
+        return headers;
     }
 
     /**
@@ -54,7 +100,9 @@ export class PrometheusClient {
             // Example: /api/v1/series?match[]={app="my-app",namespace="production"}
             const url = `${this.prometheusUrl}/api/v1/series?match[]={app="${appName}",namespace="${namespace}"}`;
 
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                headers: this.buildHeaders(),
+            });
             if (!response.ok) {
                 throw new Error(`Prometheus API error: ${response.statusText}`);
             }
