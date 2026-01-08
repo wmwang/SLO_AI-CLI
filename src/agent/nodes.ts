@@ -1,6 +1,5 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { z } from "zod";
-import * as dotenv from "dotenv";
 import { SLO_RECOMMENDER_PROMPT, ARTIFACT_GENERATOR_PROMPT, SLO_OPTIMIZER_PROMPT, SLO_REFINEMENT_PROMPT } from "./prompts.js";
 import { AgentState, SLO } from "./state.js";
 import { logger } from "../utils/logger.js";
@@ -8,23 +7,33 @@ import { SlothRunner } from "../services/sloth_runner.js";
 import * as fs from "fs";
 import * as path from "path";
 
-dotenv.config({ debug: false, override: false });
-
-// Suppress dotenv output to avoid polluting stdio (important for MCP Server)
-// Dotenv sometimes outputs to stderr even with debug: false
-
-// Validate required environment variables
-if (!process.env.OPENAI_API_KEY) {
-    console.error("❌ 錯誤: OPENAI_API_KEY 未設定!");
-    console.error("請在 .env 檔案中設定 OPENAI_API_KEY");
-    process.exit(1);
+// Manually load .env file to avoid dotenv's logging (critical for MCP)
+try {
+    const envPath = path.join(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf-8');
+        envContent.split('\n').forEach(line => {
+            const trimmed = line.trim();
+            if (trimmed && !trimmed.startsWith('#')) {
+                const equalIndex = trimmed.indexOf('=');
+                if (equalIndex > 0) {
+                    const key = trimmed.substring(0, equalIndex).trim();
+                    const value = trimmed.substring(equalIndex + 1).trim();
+                    if (key && !process.env[key]) {
+                        process.env[key] = value;
+                    }
+                }
+            }
+        });
+    }
+} catch (error) {
+    // Silently fail - environment variables might be set elsewhere
 }
 
-// Log configuration (for debugging)
-console.error("📝 LLM 配置:");
-console.error(`  - Model: ${process.env.OPENAI_MODEL_NAME || "gpt-4o-mini"}`);
-console.error(`  - API Base: ${process.env.OPENAI_API_BASE || "https://api.openai.com/v1 (預設)"}`);
-console.error(`  - API Key: ${process.env.OPENAI_API_KEY.substring(0, 20)}...`);
+// Validate required environment variables (silently for MCP compatibility)
+if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is not set in .env file");
+}
 
 // Initialize ChatOpenAI with environment variables
 // This configuration works with:

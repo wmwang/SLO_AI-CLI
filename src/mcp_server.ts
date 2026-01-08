@@ -1,9 +1,32 @@
 #!/usr/bin/env node
-import * as dotenv from "dotenv";
 
-// Load environment variables FIRST before any other imports
-// Use silent mode to avoid polluting stdio (critical for MCP communication)
-dotenv.config({ debug: false, override: false });
+// CRITICAL: For MCP Server, we must avoid ANY output to stdout/stderr
+// This includes dotenv's logging. We manually load .env to ensure complete silence.
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Manually load .env file without any logging
+try {
+    const envPath = path.join(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf-8');
+        envContent.split('\n').forEach(line => {
+            const trimmed = line.trim();
+            if (trimmed && !trimmed.startsWith('#')) {
+                const equalIndex = trimmed.indexOf('=');
+                if (equalIndex > 0) {
+                    const key = trimmed.substring(0, equalIndex).trim();
+                    const value = trimmed.substring(equalIndex + 1).trim();
+                    if (key && !process.env[key]) {
+                        process.env[key] = value;
+                    }
+                }
+            }
+        });
+    }
+} catch (error) {
+    // Silently fail - MCP will handle missing env vars
+}
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -396,9 +419,20 @@ class SLOAgentServer {
     async run() {
         const transport = new StdioServerTransport();
         await this.server.connect(transport);
-        console.error("SLO Agent MCP Server running on stdio");
+
+        // CRITICAL: Do NOT output anything to stdout/stderr
+        // MCP uses stdio for JSON-RPC communication
+        // Any output will corrupt the protocol and cause -32000 errors
     }
 }
 
-const server = new SLOAgentServer();
-server.run().catch(console.error);
+async function main() {
+    const server = new SLOAgentServer();
+    await server.run();
+}
+
+main().catch((error) => {
+    // Even errors must not be logged to stderr in MCP mode
+    // The error will be handled by the MCP protocol
+    process.exit(1);
+});

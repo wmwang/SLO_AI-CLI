@@ -1,7 +1,6 @@
-import * as dotenv from "dotenv";
+// Environment variables are loaded by nodes.ts or mcp_server.ts
+// No need to load dotenv here
 import { logger } from "../utils/logger.js";
-
-dotenv.config();
 
 export interface PrometheusMetric {
     name: string;
