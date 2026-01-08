@@ -10,12 +10,30 @@ import * as path from "path";
 
 dotenv.config({ debug: false });
 
+// Validate required environment variables
+if (!process.env.OPENAI_API_KEY) {
+    console.error("❌ 錯誤: OPENAI_API_KEY 未設定!");
+    console.error("請在 .env 檔案中設定 OPENAI_API_KEY");
+    process.exit(1);
+}
+
+// Log configuration (for debugging)
+console.error("📝 LLM 配置:");
+console.error(`  - Model: ${process.env.OPENAI_MODEL_NAME || "gpt-4o-mini"}`);
+console.error(`  - API Base: ${process.env.OPENAI_API_BASE || "https://api.openai.com/v1 (預設)"}`);
+console.error(`  - API Key: ${process.env.OPENAI_API_KEY.substring(0, 20)}...`);
+
+// Initialize ChatOpenAI with environment variables
+// This configuration works with:
+// 1. OpenAI official API
+// 2. Azure OpenAI
+// 3. Self-hosted LLM (vLLM, LM Studio, Ollama, etc.)
 const model = new ChatOpenAI({
     modelName: process.env.OPENAI_MODEL_NAME || "gpt-4o-mini",
     temperature: 0,
+    openAIApiKey: process.env.OPENAI_API_KEY,
     configuration: {
-        baseURL: process.env.OPENAI_API_BASE,
-        apiKey: process.env.OPENAI_API_KEY,
+        baseURL: process.env.OPENAI_API_BASE || undefined,
     }
 });
 
@@ -48,7 +66,7 @@ export const recommendSLOsNode = async (state: typeof AgentState.State) => {
         k8s_manifests: state.k8sManifests
     });
     const apiPayload = {
-        model: "gpt-4o-mini",  // Model name from line 14
+        model: (model as any).modelName || process.env.OPENAI_MODEL_NAME || "gpt-4o-mini",
         messages: messages.map(msg => ({
             role: msg._getType() === 'system' ? 'system' : 'user',
             content: msg.content
@@ -254,7 +272,7 @@ export const optimizeSLOsNode = async (state: typeof AgentState.State) => {
         metrics_data: state.metricsData || "No specific metrics provided, please perform general audit based on best practices.",
     });
     const apiPayload = {
-        model: "gpt-4o-mini",  // Model name from line 14
+        model: (model as any).modelName || process.env.OPENAI_MODEL_NAME || "gpt-4o-mini",
         messages: messages.map(msg => ({
             role: msg._getType() === 'system' ? 'system' : 'user',
             content: msg.content

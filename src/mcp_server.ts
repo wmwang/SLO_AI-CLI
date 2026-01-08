@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+import * as dotenv from "dotenv";
+
+// Load environment variables FIRST before any other imports
+dotenv.config({ debug: false });
+
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {

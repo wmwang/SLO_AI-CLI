@@ -21,14 +21,14 @@ slos:
     objective: 99.9
     sli:
       raw:
-        error_ratio_query: 'avg_over_time(http_response_time_seconds[{{ .window }}]) > bool 0.2'
+        error_ratio_query: 'histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[{{ .window }}])) by (le)) > bool 0.2'
     alerting:
       name: FrontendResponseLatencyAlert
       labels:
         category: "latency"
       page_alert:
         labels:
-          severity: warning
+          severity: critical
       ticket_alert:
         labels:
           severity: warning
@@ -46,35 +46,4 @@ slos:
           severity: warning
       ticket_alert:
         labels:
-          severity: warning
-  - name: "frontend-error-rate"
-    objective: 99.9
-    sli:
-      events:
-        error_query: 'sum(rate(http_requests_total{status=~"5.."}[{{ .window }}]))'
-        total_query: 'sum(rate(http_requests_total[{{ .window }}]))'
-    alerting:
-      name: FrontendErrorRateAlert
-      labels:
-        category: "errors"
-      page_alert:
-        labels:
-          severity: critical
-      ticket_alert:
-        labels:
-          severity: warning
-  - name: "frontend-resource-saturation"
-    objective: 99.9
-    sli:
-      raw:
-        error_ratio_query: 'max_over_time(container_memory_usage_bytes{container_name="app"}[{{ .window }}]) / sum(container_memory_limit_bytes) > bool 0.8'
-    alerting:
-      name: FrontendResourceSaturationAlert
-      labels:
-        category: "saturation"
-      page_alert:
-        labels:
-          severity: critical
-      ticket_alert:
-        labels:
-          severity: warning
+          severity: info
